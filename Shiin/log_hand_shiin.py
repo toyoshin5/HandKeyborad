@@ -6,14 +6,15 @@ import cv2
 target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"だ"}
 rev_target_dict = {"あ":0,"か":1,"さ":2,"た":3,"な":4,"は":5,"ま":6,"や":7,"ら":8,"わ":9,"だ":10}
 
-mode = "3D" #2D or 3D
+MODE = "3D" #2D or 3D
+DATANUM_OF_DAN = 900 #1段あたりのデータ数
 
 def write_header(f):
     s = "target,"
     for i in range(21):
-        if mode == "2D":
+        if MODE == "2D":
             s += ("x" + str(i) + ",y" + str(i) + ",")
-        elif mode == "3D":
+        elif MODE == "3D":
             s += ("x" + str(i) + ",y" + str(i) + "," + "z" + str(i) + ",")
     s = s[:-1]
     f.write(s + "\n")
@@ -22,9 +23,9 @@ def write_header(f):
 def write_csv(f,landmark,target):
     s = target + ","
     for i in range(21):
-        if mode == "2D":
+        if MODE == "2D":
             s += str(landmark[i].x) + "," + str(landmark[i].y) + ","
-        elif mode == "3D":
+        elif MODE == "3D":
             s += str(landmark[i].x) + "," + str(landmark[i].y) + "," + str(landmark[i].z) + ","
     s = s[:-1]
     f.write(s + "\n")
@@ -52,7 +53,7 @@ if __name__ == "__main__":
 
     cnt = 0
     while cap.isOpened():
-        if cnt == 200:
+        if cnt == DATANUM_OF_DAN:
             break
         success, image = cap.read()
         if not success:
@@ -69,13 +70,12 @@ if __name__ == "__main__":
             mp_drawing.draw_landmarks(
                 image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
             #csvファイルに書き込み
-            if cnt % 2 == 0:
-                write_csv(f,hand_landmarks.landmark,target)
+            write_csv(f,hand_landmarks.landmark,target)
+            cnt += 1
         cv2.imshow('MediaPipe Hands', image)
         if cv2.waitKey(5) & 0xFF == 27:
             break
-        cnt += 1
-        print(cnt)
+        print("\r" + str(cnt),end="")
 
     hands.close()
     cap.release()

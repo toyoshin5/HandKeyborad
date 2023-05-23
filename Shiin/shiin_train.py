@@ -31,13 +31,10 @@ for i in range(5,21):
     elif mode == "2D":
         X_train['distance'+str(i)] = np.sqrt((X_train['x4']-X_train['x'+str(i)])**2+(X_train['y4']-X_train['y'+str(i)])**2)
         X_test['distance'+str(i)] = np.sqrt((X_test['x4']-X_test['x'+str(i)])**2+(X_test['y4']-X_test['y'+str(i)])**2)
-#4から最も近い点はどれか
-X_train['min_distance'] = X_train[['distance5','distance6','distance7','distance8','distance9','distance10','distance11','distance12','distance13','distance14','distance15','distance16','distance17','distance18','distance19','distance20']].min(axis=1)
-X_test['min_distance'] = X_test[['distance5','distance6','distance7','distance8','distance9','distance10','distance11','distance12','distance13','distance14','distance15','distance16','distance17','distance18','distance19','distance20']].min(axis=1)
 #4から各座標までの角度を特徴量に追加
-for i in range(5,21):
-    X_train['angle'+str(i)] = np.arctan2((X_train['y4']-X_train['y'+str(i)]),(X_train['x4']-X_train['x'+str(i)]))
-    X_test['angle'+str(i)] = np.arctan2((X_test['y4']-X_test['y'+str(i)]),(X_test['x4']-X_test['x'+str(i)]))
+# for i in range(5,21):
+#     X_train['angle'+str(i)] = np.arctan2((X_train['y4']-X_train['y'+str(i)]),(X_train['x4']-X_train['x'+str(i)]))
+#     X_test['angle'+str(i)] = np.arctan2((X_test['y4']-X_test['y'+str(i)]),(X_test['x4']-X_test['x'+str(i)]))
 #xn,ynを消去
 for i in range(0,21):
     X_train = X_train.drop(['x'+str(i),'y'+str(i),'z'+str(i)],axis=1)
@@ -45,7 +42,7 @@ for i in range(0,21):
 model = XGBClassifier(max_depth=10,learning_rate=0.1,n_estimators=100)
 #ログを100回ごとに出力
 
-model.fit(X_train,y_train,eval_metric=["merror", "mlogloss"],eval_set=[(X_test, y_test)],verbose=100)
+model.fit(X_train,y_train,eval_metric=["merror", "mlogloss"],eval_set=[(X_test, y_test)],verbose=10)
 #評価
 from sklearn.metrics import accuracy_score
 y_pred = model.predict(X_test)

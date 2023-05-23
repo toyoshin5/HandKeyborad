@@ -30,12 +30,10 @@ def shiin_predict(model,landmark,mode):
         elif mode == "3D":
             landmark_dict['distance'+str(i)] = np.sqrt((landmark_dict['x4']-landmark_dict['x'+str(i)])**2+(landmark_dict['y4']-landmark_dict['y'+str(i)])**2+(landmark_dict['z4']-landmark_dict['z'+str(i)])**2)
 
-    #4から最も近い点はどれか
-    landmark_dict['min_distance'] = landmark_dict[['distance5','distance6','distance7','distance8','distance9','distance10','distance11','distance12','distance13','distance14','distance15','distance16','distance17','distance18','distance19','distance20']].min(axis=1)
     #4から各座標までの角度を特徴量に追加
-    for i in range(5,21):
-        landmark_dict['angle'+str(i)] = np.arctan2((landmark_dict['y4']-landmark_dict['y'+str(i)]),(landmark_dict['x4']-landmark_dict['x'+str(i)]))
-     #xn,ynを消去
+    # for i in range(5,21):
+    #     landmark_dict['angle'+str(i)] = np.arctan2((landmark_dict['y4']-landmark_dict['y'+str(i)]),(landmark_dict['x4']-landmark_dict['x'+str(i)]))
+    # #xn,ynを消去
     for i in range(0,21):
         if mode == "2D":
             landmark_dict = landmark_dict.drop(['x'+str(i),'y'+str(i)],axis=1)
