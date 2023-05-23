@@ -24,16 +24,13 @@ def shiin_predict(model,landmark,mode):
     landmark_dict = pd.DataFrame(landmark_dict,index=[0]) #1行のデータフレームに変換
     #前処理
     #4から各点までの距離を特徴量に追加
+    hand_size = np.sqrt((landmark_dict['x0']-landmark_dict['x17'])**2+(landmark_dict['y0']-landmark_dict['y17'])**2)
     for i in range(5,21):
         if mode == "2D":
-            landmark_dict['distance'+str(i)] = np.sqrt((landmark_dict['x4']-landmark_dict['x'+str(i)])**2+(landmark_dict['y4']-landmark_dict['y'+str(i)])**2)
+            landmark_dict['distance'+str(i)] = np.sqrt((landmark_dict['x4']-landmark_dict['x'+str(i)])**2+(landmark_dict['y4']-landmark_dict['y'+str(i)])**2)/hand_size
         elif mode == "3D":
-            landmark_dict['distance'+str(i)] = np.sqrt((landmark_dict['x4']-landmark_dict['x'+str(i)])**2+(landmark_dict['y4']-landmark_dict['y'+str(i)])**2+(landmark_dict['z4']-landmark_dict['z'+str(i)])**2)
-
-    #4から各座標までの角度を特徴量に追加
-    # for i in range(5,21):
-    #     landmark_dict['angle'+str(i)] = np.arctan2((landmark_dict['y4']-landmark_dict['y'+str(i)]),(landmark_dict['x4']-landmark_dict['x'+str(i)]))
-    # #xn,ynを消去
+            landmark_dict['distance'+str(i)] = np.sqrt((landmark_dict['x4']-landmark_dict['x'+str(i)])**2+(landmark_dict['y4']-landmark_dict['y'+str(i)])**2+(landmark_dict['z4']-landmark_dict['z'+str(i)])**2)/hand_size
+    #xn,ynを消去
     for i in range(0,21):
         if mode == "2D":
             landmark_dict = landmark_dict.drop(['x'+str(i),'y'+str(i)],axis=1)
