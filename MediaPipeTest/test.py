@@ -28,7 +28,7 @@ while cap.isOpened():
             cv2.circle(image, (int(thumb_tip.x * image.shape[1]), int(thumb_tip.y * image.shape[0])), 10, (255, 0, 0), -1)
 
 
-            print(thumb_tip.x, thumb_tip.y, thumb_tip.z)
+            print(thumb_tip.z)
     cv2.imshow('MediaPipe Hands', image)
     if cv2.waitKey(5) & 0xFF == 27:
         break
