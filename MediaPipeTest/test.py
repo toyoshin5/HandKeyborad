@@ -23,12 +23,9 @@ while cap.isOpened():
         for hand_landmarks in results.multi_hand_landmarks:
             mp_drawing.draw_landmarks(
                 image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-            #親指の先端は青い丸で表示
-            thumb_tip = hand_landmarks.landmark[4]
-            cv2.circle(image, (int(thumb_tip.x * image.shape[1]), int(thumb_tip.y * image.shape[0])), 10, (255, 0, 0), -1)
-
-
-            print(thumb_tip.z)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    #画像にFPSを表示
+    cv2.putText(image, str(fps) + "fps", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), thickness=2)
     cv2.imshow('MediaPipe Hands', image)
     if cv2.waitKey(5) & 0xFF == 27:
         break

@@ -92,6 +92,9 @@ if __name__ == "__main__":
             print(target_dict[pred[0]])
             #予測結果を画面に日本語で大きく表示
             image = putText_japanese(image,target_dict[pred[0]],(100,200),200,(255,255,255))
+        #FPSを表示
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        cv2.putText(image, str(fps) + "fps", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), thickness=2)
         cv2.imshow('MediaPipe Hands', image)
         if cv2.waitKey(5) & 0xFF == 27: #ESCキーで終了
             break
