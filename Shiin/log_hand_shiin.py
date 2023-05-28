@@ -65,7 +65,6 @@ if __name__ == "__main__":
         image.flags.writeable = True
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         if results.multi_hand_landmarks:
-            #len(results.multi_hand_landmarks) = 写っている手の数
             hand_landmarks = results.multi_hand_landmarks[0]
             mp_drawing.draw_landmarks(
                 image, hand_landmarks, mp_hands.HAND_CONNECTIONS)

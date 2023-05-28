@@ -8,6 +8,7 @@ import cv2
 from xgboost import XGBClassifier
 import pickle 
 
+
 mode = "2D" #2D or 3D
 
 target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"だ"}

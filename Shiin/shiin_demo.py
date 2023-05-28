@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Description: 手のランドマークをXGBoostのモデルに入力して、子音を予測するプログラム
 
 import sys
@@ -8,6 +9,7 @@ import pandas as pd
 import cv2
 from xgboost import XGBClassifier
 import pickle 
+import serial
 
 mode = "2D" #2D or 3D
 
@@ -75,6 +77,8 @@ if __name__ == "__main__":
     input_str = ""
     #ウェブカメラからの入力
     cap = cv2.VideoCapture(0)
+    #シリアル通信の設定
+    ser = serial.Serial('/dev/tty.usbmodem1301', 9600)
     while cap.isOpened():
         success, image = cap.read()
         if not success:
@@ -98,14 +102,14 @@ if __name__ == "__main__":
         cv2.putText(image, str(fps) + "fps", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), thickness=2)
         cv2.imshow('MediaPipe Hands', image)
         # キー入力を待機する
-        key = cv2.waitKey(10)
-        if key == 32:
-            #スペースキーが押されているか
-            input_str += target_dict[pred[0]]
-            print(input_str)
-        #cなら文字列をクリア
-        elif key == ord('c'):
-            input_str = ""
+        key = cv2.waitKey(1)
+        #Arduinoからのシリアル通信を受け取る
+        if results.multi_hand_landmarks:
+            if ser.in_waiting > 0:
+                row = ser.readline()
+                msg = row.decode('utf-8').rstrip()
+                if msg == "tap":
+                    input_str += target_dict[pred[0]]
+                    print(input_str)
 
-    hands.close()
     cap.release()
