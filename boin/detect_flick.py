@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 import serial
 
-ARDUINO_PATH = "/dev/cu.usbmodem101" #Arduinoのシリアルポート
+ARDUINO_PATH = "/dev/cu.usbmodem2101" #Arduinoのシリアルポート
 
 def draw_vector(image,vec,res,origin=[0.5,0.5]):
     vec = [vec[0]*res[0],vec[1]*res[1]]
@@ -24,8 +24,14 @@ if __name__ == '__main__':
     resolution = [cap.get(cv2.CAP_PROP_FRAME_WIDTH), cap.get(cv2.CAP_PROP_FRAME_HEIGHT)]
     #シリアル通信の設定
     ser = serial.Serial(ARDUINO_PATH, 9600)
-    #直近5フレームの親指のx,y変位を格納するリスト
-    thumb_history = [[0,0],[0,0],[0,0],[0,0],[0,0]]
+    #押下時の親指のx,y座標を格納
+    thumb_tap = np.array([0,0])
+    thumb_tap_org = np.array([0,0])
+    #リリース時の親指のx,y座標を格納
+    thumb_release = np.array([0,0])
+    thumb_release_org = np.array([0,0])
+    #タップしているか(Debug用)
+    is_tapping = False
     while cap.isOpened():
         success, image = cap.read()
         if not success:
@@ -44,14 +50,11 @@ if __name__ == '__main__':
             image = cv2.circle(image,(int(hand_landmarks.landmark[4].x*resolution[0]),int(hand_landmarks.landmark[4].y*resolution[1])), 10, (255,0,0), -1)
             #8,12,16,10の平均を原点とする
             origin = [(hand_landmarks.landmark[8].x+hand_landmarks.landmark[12].x+hand_landmarks.landmark[16].x+hand_landmarks.landmark[10].x)/4,(hand_landmarks.landmark[8].y+hand_landmarks.landmark[12].y+hand_landmarks.landmark[16].y+hand_landmarks.landmark[10].y)/4]
-            thumb  = [hand_landmarks.landmark[4].x,hand_landmarks.landmark[4].y]
-            #原点からの親指のx,y座標と変位を計算
-            thumb = [thumb[0]-origin[0],thumb[1]-origin[1]]
-            #直近5フレームの親指のx,y座標,変位を格納するリストに左から追加
-            thumb_history.insert(0,thumb)
-            thumb_history.pop()
             vec = [hand_landmarks.landmark[12].x-hand_landmarks.landmark[9].x,hand_landmarks.landmark[12].y-hand_landmarks.landmark[9].y]
             image = draw_vector(image,vec,resolution,origin)
+            if not is_tapping:
+                draw_vector(image,thumb_release-thumb_tap,resolution,thumb_tap_org)
+
 
         cv2.imshow('MediaPipe Hands', image)
         kry = cv2.waitKey(1)
@@ -60,22 +63,34 @@ if __name__ == '__main__':
             if ser.in_waiting > 0:
                 row = ser.readline()
                 msg = row.decode('utf-8').rstrip()
+                if msg == "tap":
+                    is_tapping = True
+                    thumb_tap_org = [hand_landmarks.landmark[4].x,hand_landmarks.landmark[4].y]
+                    thumb_tap = np.array(thumb_tap_org)-np.array(origin)
+                    
                 if msg == "release":  
-                    thumb_move = [thumb_history[0][0]-thumb_history[2][0],thumb_history[0][1]-thumb_history[2][1]] #直近3フレームの親指のx,y変位
-                    #上下左右を判定
-                    cos_theta = np.dot(vec,thumb_move)/(np.linalg.norm(vec)*np.linalg.norm(thumb_move))
-                    gaiseki = np.cross(vec,thumb_move)
-                    if(gaiseki > 0):
-                        theta = np.arccos(cos_theta)*180/np.pi
+                    is_tapping = False
+                    thumb_release_org = [hand_landmarks.landmark[4].x,hand_landmarks.landmark[4].y]
+                    thumb_release = np.array(thumb_release_org)-np.array(origin)
+                    thumb_move = np.array(thumb_release)-np.array(thumb_tap)
+                    #親指の動きが小さい場合
+                    if np.linalg.norm(thumb_move) < 0.02:
+                        print("クリック")
                     else:
-                        theta = 360-np.arccos(cos_theta)*180/np.pi
-                    if theta < 45 or theta > 300:
-                        print("左")
-                    elif theta < 135:
-                        print("下")
-                    elif theta < 225:
-                        print("右")
-                    else:
-                        print("上") 
+                        #上下左右を判定
+                        cos_theta = np.dot(vec,thumb_move)/(np.linalg.norm(vec)*np.linalg.norm(thumb_move))
+                        gaiseki = np.cross(vec,thumb_move,)
+                        if(gaiseki > 0):
+                            theta = np.arccos(cos_theta)*180/np.pi
+                        else:
+                            theta = 360-np.arccos(cos_theta)*180/np.pi
+                        if theta < 45 or theta > 305:
+                            print("左")
+                        elif theta < 135:
+                            print("下")
+                        elif theta < 225:
+                            print("右")
+                        else:
+                            print("上") 
     hands.close()
     cap.release()
