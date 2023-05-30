@@ -11,7 +11,8 @@ from xgboost import XGBClassifier
 import pickle 
 import serial
 
-mode = "2D" #2D or 3D
+MODE = "2D" #2D or 3D
+ARDUINO_PATH = "/dev/cu.usbmodem101" #Arduinoのシリアルポート
 
 target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"だ"}
 rev_target_dict = {"あ":0,"か":1,"さ":2,"た":3,"な":4,"は":5,"ま":6,"や":7,"ら":8,"わ":9,"だ":10}
@@ -65,7 +66,7 @@ def putText_japanese(img, text, point, size, color):
 #main
 if __name__ == "__main__":
     #モデルの読み込み
-    model = pickle.load(open('shiin_model_'+mode+'.pkl', 'rb'))
+    model = pickle.load(open('shiin_model_'+MODE+'.pkl', 'rb'))
     #ターゲットの段の入力
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(
@@ -78,7 +79,7 @@ if __name__ == "__main__":
     #ウェブカメラからの入力
     cap = cv2.VideoCapture(0)
     #シリアル通信の設定
-    ser = serial.Serial('/dev/tty.usbmodem1301', 9600)
+    ser = serial.Serial(ARDUINO_PATH, 9600)
     while cap.isOpened():
         success, image = cap.read()
         if not success:
@@ -95,7 +96,7 @@ if __name__ == "__main__":
             hand_landmarks = results.multi_hand_landmarks[0]
             mp_drawing.draw_landmarks(
                 image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-            pred = shiin_predict(model,hand_landmarks.landmark,mode)        
+            pred = shiin_predict(model,hand_landmarks.landmark,MODE)        
         image = putText_japanese(image,input_str,(100,200),100,(255,255,255))
         #FPSを表示   
         fps = cap.get(cv2.CAP_PROP_FPS)

@@ -2,18 +2,24 @@
 const int vol_pin = 1;
 
 int vol_value = 0;
-int vol_value_old = 0;
+bool isOn = false;
 void setup() {
-  Serial.begin( 9600 );
+  Serial.begin(9600);
 }
 
 void loop() {
   vol_value = analogRead( vol_pin );
-  if(vol_value < 1023){
-    if(vol_value_old >= 1023){
+  if(vol_value < 1000){
+    if(!isOn){
       Serial.println("tap");
+      isOn = true;
     }
   }
-  vol_value_old = vol_value;
-  delay( 50 );
+  if(vol_value >= 1023){
+    if(isOn){
+      Serial.println("release");
+      isOn = false;
+    }
+  }
+  delay( 10 );
 }
