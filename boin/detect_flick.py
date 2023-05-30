@@ -1,6 +1,7 @@
 import mediapipe as mp
 import numpy as np
 import cv2
+import serial
 
 ARDUINO_PATH = "/dev/cu.usbmodem101" #Arduinoのシリアルポート
 
@@ -24,7 +25,6 @@ if __name__ == '__main__':
     #シリアル通信の設定
     ser = serial.Serial(ARDUINO_PATH, 9600)
     #直近5フレームの親指のx,y変位を格納するリスト
-    thumb_move_history = [[0,0],[0,0],[0,0],[0,0],[0,0]]
     thumb_history = [[0,0],[0,0],[0,0],[0,0],[0,0]]
     while cap.isOpened():
         success, image = cap.read()
@@ -47,11 +47,8 @@ if __name__ == '__main__':
             thumb  = [hand_landmarks.landmark[4].x,hand_landmarks.landmark[4].y]
             #原点からの親指のx,y座標と変位を計算
             thumb = [thumb[0]-origin[0],thumb[1]-origin[1]]
-            thumb_move = [thumb[0]-thumb_history[0][0],thumb[1]-thumb_history[0][1]]
             #直近5フレームの親指のx,y座標,変位を格納するリストに左から追加
-            thumb_move_history.insert(0,thumb_move)
             thumb_history.insert(0,thumb)
-            thumb_move_history.pop()
             thumb_history.pop()
             vec = [hand_landmarks.landmark[12].x-hand_landmarks.landmark[9].x,hand_landmarks.landmark[12].y-hand_landmarks.landmark[9].y]
             image = draw_vector(image,vec,resolution,origin)
@@ -64,10 +61,10 @@ if __name__ == '__main__':
                 row = ser.readline()
                 msg = row.decode('utf-8').rstrip()
                 if msg == "release":  
-                    print(thumb_move_history)
+                    thumb_move = [thumb_history[0][0]-thumb_history[2][0],thumb_history[0][1]-thumb_history[2][1]] #直近3フレームの親指のx,y変位
                     #上下左右を判定
-                    cos_theta = np.dot(vec,thumb_move_history[0])/(np.linalg.norm(vec)*np.linalg.norm(thumb_move_history[0]))
-                    gaiseki = np.cross(vec,thumb_move_history[0])
+                    cos_theta = np.dot(vec,thumb_move)/(np.linalg.norm(vec)*np.linalg.norm(thumb_move))
+                    gaiseki = np.cross(vec,thumb_move)
                     if(gaiseki > 0):
                         theta = np.arccos(cos_theta)*180/np.pi
                     else:
