@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 import serial
 
-ARDUINO_PATH = "/dev/cu.usbmodem2101" #Arduinoのシリアルポート
+ARDUINO_PATH = "/dev/cu.usbmodem11101" #Arduinoのシリアルポート
 
 def draw_vector(image,vec,res,origin=[0.5,0.5]):
     vec = [vec[0]*res[0],vec[1]*res[1]]
