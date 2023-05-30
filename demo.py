@@ -83,6 +83,8 @@ if __name__ == "__main__":
     ser = serial.Serial(ARDUINO_PATH, 9600)
     #入力された母音
     boin = ""
+    #50音データの読み込み
+    gojuon_data = pd.read_csv("50on.csv",encoding="UTF-8", header=None)
     #押下時の親指のx,y座標を格納
     thumb_tap = np.array([0,0])
     thumb_tap_org = np.array([0,0])
@@ -126,16 +128,17 @@ if __name__ == "__main__":
                     #親指の押下時のx,y座標を格納
                     thumb_tap_org = [hand_landmarks.landmark[4].x,hand_landmarks.landmark[4].y]
                     thumb_tap = np.array(thumb_tap_org)-np.array(origin)
-                    print(boin)
+                    print(boin,end=" ")
                 if msg == "release":
                     #親指のリリース時のx,y座標を格納
                     thumb_release_org = [hand_landmarks.landmark[4].x,hand_landmarks.landmark[4].y]
                     thumb_release = np.array(thumb_release_org)-np.array(origin)
                     #親指の動きを計算
                     thumb_move = np.array(thumb_release)-np.array(thumb_tap)
+                    shiin_num = 0
                     #親指の動きが小さい場合
                     if np.linalg.norm(thumb_move) < 0.02:
-                        print("クリック")
+                        print("中",end=" ")
                     else:
                         #上下左右を判定
                         cos_theta = np.dot(vec,thumb_move)/(np.linalg.norm(vec)*np.linalg.norm(thumb_move))
@@ -145,11 +148,26 @@ if __name__ == "__main__":
                         else:
                             theta = 360-np.arccos(cos_theta)*180/np.pi
                         if theta < 45 or theta > 305:
-                            print("左")
+                            print("左",end=" ")
+                            shiin_num = 1
                         elif theta < 135:
-                            print("下")
+                            print("下",end=" ")
+                            shiin_num = 4
                         elif theta < 225:
-                            print("右")
+                            print("右",end=" ")
+                            shiin_num = 3
                         else:
-                            print("上")
+                            print("上",end=" ")
+                            shiin_num = 2
+                    #ひらがなを判定。
+                    #1列目がboinと一致する行
+                    gojuon_data_boin = gojuon_data[gojuon_data[0] == boin]
+                    #その行のshiin_num列
+                    hiragana = gojuon_data_boin[shiin_num].values[0]
+                    if hiragana != "*":
+                        #入力文字列に追加
+                        print(hiragana)
+
+
+                        
     cap.release()
