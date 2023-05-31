@@ -40,15 +40,27 @@ for i in range(5,21):
 for i in range(0,21):
     X_train = X_train.drop(['x'+str(i),'y'+str(i),'z'+str(i)],axis=1)
     X_test = X_test.drop(['x'+str(i),'y'+str(i),'z'+str(i)],axis=1)
-model = XGBClassifier(max_depth=10,learning_rate=0.1,n_estimators=100)
+model = XGBClassifier(early_stopping_rounds=10)
 #ログを100回ごとに出力
 
-model.fit(X_train,y_train,eval_metric=["merror", "mlogloss"],eval_set=[(X_test, y_test)],verbose=10)
+model.fit(X_train,y_train,eval_metric=["mlogloss"],eval_set=[(X_train, y_train),(X_test, y_test)],verbose=1)
+
+#trainとtestのグラフを出力
+results = model.evals_result()
+epochs = len(results['validation_0']['mlogloss'])
+x_axis = range(0, epochs)
+fig, ax = plt.subplots()
+ax.plot(x_axis, results['validation_0']['mlogloss'], label='Train')
+ax.plot(x_axis, results['validation_1']['mlogloss'], label='Test')
+ax.legend()
+plt.ylabel('Log Loss')
+plt.title('XGBoost Log Loss')
+plt.show()
+
 #評価
 from sklearn.metrics import accuracy_score
 y_pred = model.predict(X_test)
 print('accuracy_score:',accuracy_score(y_test, y_pred))
-
 #表を作成
 
 #ヒラギノフォントを使う
@@ -64,9 +76,6 @@ sns.heatmap(cm, annot=True, xticklabels=labels, yticklabels=labels,fmt="d")
 plt.xlabel('予測')
 plt.ylabel('正解')
 plt.show()
-
-
-
 
 pickle.dump(model, open('shiin_model_'+mode+'.pkl', 'wb'))
 
