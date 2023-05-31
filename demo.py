@@ -12,8 +12,8 @@ import pickle
 import serial
 
 MODE = "2D" #2D or 3D
-ARDUINO_PATH = "/dev/cu.usbmodem213101" #Arduinoのシリアルポート
-VIDEOCAPTURE_NUM = 1 #ビデオキャプチャの番号
+ARDUINO_PATH = "/dev/cu.usbmodem1101" #Arduinoのシリアルポート
+VIDEOCAPTURE_NUM = 0 #ビデオキャプチャの番号
 
 target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"だ"}
 rev_target_dict = {"あ":0,"か":1,"さ":2,"た":3,"な":4,"は":5,"ま":6,"や":7,"ら":8,"わ":9,"だ":10}
@@ -94,7 +94,7 @@ if __name__ == "__main__":
     while cap.isOpened():
         success, image = cap.read()
         if not success:
-            print("Ignoring empty camera frame.")
+            print("カメラから映像を取得できませんでした")
             continue
         image = cv2.cvtColor(cv2.flip(image, 1), cv2.COLOR_BGR2RGB)
         image.flags.writeable = False
@@ -109,15 +109,6 @@ if __name__ == "__main__":
                 image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
             vec = [hand_landmarks.landmark[12].x-hand_landmarks.landmark[9].x,hand_landmarks.landmark[12].y-hand_landmarks.landmark[9].y]
             origin = [(hand_landmarks.landmark[8].x+hand_landmarks.landmark[12].x+hand_landmarks.landmark[16].x+hand_landmarks.landmark[10].x)/4,(hand_landmarks.landmark[8].y+hand_landmarks.landmark[12].y+hand_landmarks.landmark[16].y+hand_landmarks.landmark[10].y)/4]
-        image = putText_japanese(image,input_str,(100,200),100,(255,255,255))
-        #FPSを表示   
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        cv2.putText(image, str(fps) + "fps", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), thickness=2)
-        cv2.imshow('MediaPipe Hands', image)
-        # キー入力を待機する
-        key = cv2.waitKey(1)
-        #Arduinoからのシリアル通信を受け取る
-        if results.multi_hand_landmarks:
             if ser.in_waiting > 0:
                 row = ser.readline()
                 msg = row.decode('utf-8').rstrip()
@@ -169,5 +160,10 @@ if __name__ == "__main__":
                         print(hiragana)
 
 
-                        
+        image = putText_japanese(image,input_str,(100,200),100,(255,255,255))
+        #FPSを表示   
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        cv2.putText(image, str(fps) + "fps", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), thickness=2)
+        cv2.imshow('MediaPipe Hands', image)
+        key = cv2.waitKey(1)               
     cap.release()

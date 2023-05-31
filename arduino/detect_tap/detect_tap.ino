@@ -11,7 +11,7 @@ void setup() {
 
 void loop() {
   vol_value = analogRead( vol_pin );
-  if(vol_value < 1000){
+  if(vol_value < 950){
     if(!isOn){
       Serial.println("tap");
       isOn = true;
