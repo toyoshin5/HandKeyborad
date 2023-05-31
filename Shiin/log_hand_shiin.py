@@ -7,7 +7,7 @@ target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8
 rev_target_dict = {"あ":0,"か":1,"さ":2,"た":3,"な":4,"は":5,"ま":6,"や":7,"ら":8,"わ":9,"だ":10}
 
 MODE = "3D" #2D or 3D
-DATANUM_OF_DAN = 900 #1段あたりのデータ数
+DATANUM_OF_DAN = 9000 #1段あたりのデータ数
 
 def write_header(f):
     s = "target,"
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     )
     mp_drawing = mp.solutions.drawing_utils
     #ウェブカメラからの入力
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
     #csvファイルに書き込み
     f = open('hand_landmark.csv', 'a')  
     #ファイルが空の場合はヘッダーを書き込み

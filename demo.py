@@ -12,7 +12,7 @@ import pickle
 import serial
 
 MODE = "2D" #2D or 3D
-ARDUINO_PATH = "/dev/cu.usbmodem11101" #Arduinoのシリアルポート
+ARDUINO_PATH = "/dev/cu.usbmodem213101" #Arduinoのシリアルポート
 VIDEOCAPTURE_NUM = 1 #ビデオキャプチャの番号
 
 target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"だ"}

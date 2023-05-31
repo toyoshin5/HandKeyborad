@@ -9,7 +9,8 @@ from xgboost import XGBClassifier
 import pickle 
 
 
-mode = "2D" #2D or 3D
+MODE = "2D" #2D or 3D
+VIDEOCAPTURE_NUM = 1 #ビデオキャプチャの番号
 
 target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"だ"}
 rev_target_dict = {"あ":0,"か":1,"さ":2,"た":3,"な":4,"は":5,"ま":6,"や":7,"ら":8,"わ":9,"だ":10}
@@ -63,7 +64,7 @@ def putText_japanese(img, text, point, size, color):
 #main
 if __name__ == "__main__":
     #モデルの読み込み
-    model = pickle.load(open('shiin_model_'+mode+'.pkl', 'rb'))
+    model = pickle.load(open('shiin_model_'+MODE+'.pkl', 'rb'))
     #ターゲットの段の入力
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(
@@ -72,7 +73,7 @@ if __name__ == "__main__":
     )
     mp_drawing = mp.solutions.drawing_utils
     #ウェブカメラからの入力
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(VIDEOCAPTURE_NUM)
     while cap.isOpened():
         success, image = cap.read()
         if not success:
@@ -89,7 +90,7 @@ if __name__ == "__main__":
             mp_drawing.draw_landmarks(
                 image, hand_landmarks, mp_hands.HAND_CONNECTIONS)        
             #予測
-            pred = shiin_predict(model,hand_landmarks.landmark,mode)
+            pred = shiin_predict(model,hand_landmarks.landmark,MODE)
             print(target_dict[pred[0]])
             #予測結果を画面に日本語で大きく表示
             image = putText_japanese(image,target_dict[pred[0]],(100,200),200,(255,255,255))
