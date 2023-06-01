@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # Description: 手のランドマークをXGBoostのモデルに入力して、子音を予測するプログラム
 
-import sys
 from time import sleep
 import mediapipe as mp
 import numpy as np
@@ -10,10 +9,11 @@ import cv2
 from xgboost import XGBClassifier
 import pickle 
 import serial
-
+#ui.pyから関数をインポート
+import hk_ui 
 MODE = "2D" #2D or 3D
-ARDUINO_PATH = "/dev/cu.usbmodem1101" #Arduinoのシリアルポート
-VIDEOCAPTURE_NUM = 0 #ビデオキャプチャの番号
+ARDUINO_PATH = "/dev/cu.usbmodem213101" #Arduinoのシリアルポート
+VIDEOCAPTURE_NUM = 1 #ビデオキャプチャの番号
 
 target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"だ"}
 rev_target_dict = {"あ":0,"か":1,"さ":2,"た":3,"な":4,"は":5,"ま":6,"や":7,"ら":8,"わ":9,"だ":10}
@@ -45,24 +45,6 @@ def shiin_predict(model,landmark,mode):
     pred = model.predict(landmark_dict)
     return pred
 
-#日本語を表示する関数
-from PIL import Image, ImageDraw, ImageFont
-def putText_japanese(img, text, point, size, color):
-    #hiragino font
-    try:
-        fontpath = '/System/Library/Fonts/ヒラギノ角ゴシック W4.ttc'
-        font = ImageFont.truetype(fontpath, size)
-    except:
-        print("フォントが見つかりませんでした。: " + fontpath)
-        sys.exit()
-    #imgをndarrayからPILに変換
-    img_pil = Image.fromarray(img)
-    #drawインスタンス生成
-    draw = ImageDraw.Draw(img_pil)
-    #テキスト描画
-    draw.text(point, text, fill=color, font=font)
-    #PILからndarrayに変換して返す
-    return np.array(img_pil)
 
 #main
 if __name__ == "__main__":
@@ -79,10 +61,12 @@ if __name__ == "__main__":
     input_str = ""
     #ウェブカメラからの入力
     cap = cv2.VideoCapture(VIDEOCAPTURE_NUM)
+    #解像度
+    resolution = [cap.get(cv2.CAP_PROP_FRAME_WIDTH), cap.get(cv2.CAP_PROP_FRAME_HEIGHT)]
     #シリアル通信の設定
     ser = serial.Serial(ARDUINO_PATH, 9600)
     #入力された母音
-    boin = ""
+    shiin = ""
     #50音データの読み込み
     gojuon_data = pd.read_csv("50on.csv",encoding="UTF-8", header=None)
     #押下時の親指のx,y座標を格納
@@ -91,12 +75,15 @@ if __name__ == "__main__":
     #リリース時の親指のx,y座標を格納
     thumb_release = np.array([0,0])
     thumb_release_org = np.array([0,0])
+    #入力表示用のカウンター
+    count = 0
     while cap.isOpened():
         success, image = cap.read()
         if not success:
             print("カメラから映像を取得できませんでした")
             continue
         image = cv2.cvtColor(cv2.flip(image, 1), cv2.COLOR_BGR2RGB)
+        image = cv2.flip(image, 1)
         image.flags.writeable = False
         results = hands.process(image)
         image.flags.writeable = True
@@ -105,8 +92,8 @@ if __name__ == "__main__":
         if results.multi_hand_landmarks:
             #len(results.multi_hand_landmarks) = 写っている手の数
             hand_landmarks = results.multi_hand_landmarks[0]
-            mp_drawing.draw_landmarks(
-                image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+            # mp_drawing.draw_landmarks(
+            #     image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
             vec = [hand_landmarks.landmark[12].x-hand_landmarks.landmark[9].x,hand_landmarks.landmark[12].y-hand_landmarks.landmark[9].y]
             origin = [(hand_landmarks.landmark[8].x+hand_landmarks.landmark[12].x+hand_landmarks.landmark[16].x+hand_landmarks.landmark[10].x)/4,(hand_landmarks.landmark[8].y+hand_landmarks.landmark[12].y+hand_landmarks.landmark[16].y+hand_landmarks.landmark[10].y)/4]
             if ser.in_waiting > 0:
@@ -115,18 +102,18 @@ if __name__ == "__main__":
                 if msg == "tap":
                     #母音を判定
                     pred = shiin_predict(model,hand_landmarks.landmark,MODE)
-                    boin = target_dict[pred[0]]
+                    shiin = target_dict[pred[0]]
                     #親指の押下時のx,y座標を格納
                     thumb_tap_org = [hand_landmarks.landmark[4].x,hand_landmarks.landmark[4].y]
                     thumb_tap = np.array(thumb_tap_org)-np.array(origin)
-                    print(boin,end=" ")
+                    print(shiin,end=" ")
                 if msg == "release":
                     #親指のリリース時のx,y座標を格納
                     thumb_release_org = [hand_landmarks.landmark[4].x,hand_landmarks.landmark[4].y]
                     thumb_release = np.array(thumb_release_org)-np.array(origin)
                     #親指の動きを計算
                     thumb_move = np.array(thumb_release)-np.array(thumb_tap)
-                    shiin_num = 0
+                    boin_num = 0
                     #親指の動きが小さい場合
                     if np.linalg.norm(thumb_move) < 0.02:
                         print("中",end=" ")
@@ -138,32 +125,34 @@ if __name__ == "__main__":
                             theta = np.arccos(cos_theta)*180/np.pi
                         else:
                             theta = 360-np.arccos(cos_theta)*180/np.pi
-                        if theta < 45 or theta > 305:
+                        if theta < 45 or theta > 315:
                             print("左",end=" ")
-                            shiin_num = 1
+                            boin_num = 1
                         elif theta < 135:
-                            print("下",end=" ")
-                            shiin_num = 4
+                            print("上",end=" ")
+                            boin_num = 2
                         elif theta < 225:
                             print("右",end=" ")
-                            shiin_num = 3
+                            boin_num = 3
                         else:
-                            print("上",end=" ")
-                            shiin_num = 2
+                            print("下",end=" ")
+                            boin_num = 4
+
                     #ひらがなを判定。
-                    #1列目がboinと一致する行
-                    gojuon_data_boin = gojuon_data[gojuon_data[0] == boin]
+                    #1列目がshiinと一致する行
+                    gojuon_data_boin = gojuon_data[gojuon_data[0] == shiin]
                     #その行のshiin_num列
-                    hiragana = gojuon_data_boin[shiin_num].values[0]
+                    hiragana = gojuon_data_boin[boin_num].values[0]
                     if hiragana != "*":
                         #入力文字列に追加
                         print(hiragana)
-
-
-        image = putText_japanese(image,input_str,(100,200),100,(255,255,255))
+                    count = 5
+            if count > 0:
+                image = hk_ui.draw_hiragana(image,resolution,hand_landmarks.landmark,False,shiin,hiragana,boin_num)
         #FPSを表示   
         fps = cap.get(cv2.CAP_PROP_FPS)
         cv2.putText(image, str(fps) + "fps", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), thickness=2)
         cv2.imshow('MediaPipe Hands', image)
-        key = cv2.waitKey(1)               
+        key = cv2.waitKey(1)  
+        count -= 1;             
     cap.release()
