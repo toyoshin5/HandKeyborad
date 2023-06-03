@@ -45,25 +45,6 @@ def shiin_predict(model,landmark,mode):
     pred = model.predict(landmark_dict)
     return pred
 
-#日本語を表示する関数
-from PIL import Image, ImageDraw, ImageFont
-def putText_japanese(img, text, point, size, color):
-    #hiragino font
-    try:
-        fontpath = '/System/Library/Fonts/ヒラギノ角ゴシック W4.ttc'
-        font = ImageFont.truetype(fontpath, size)
-    except:
-        print("フォントが見つかりませんでした。: " + fontpath)
-        sys.exit()
-    #imgをndarrayからPILに変換
-    img_pil = Image.fromarray(img)
-    #drawインスタンス生成
-    draw = ImageDraw.Draw(img_pil)
-    #テキスト描画
-    draw.text(point, text, fill=color, font=font)
-    #PILからndarrayに変換して返す
-    return np.array(img_pil)
-
 #main
 if __name__ == "__main__":
     #モデルの読み込み
@@ -99,10 +80,8 @@ if __name__ == "__main__":
             pred = shiin_predict(model,hand_landmarks.landmark,MODE)
             print(target_dict[pred[0]])
             #予測結果を画面に日本語で大きく表示
-            #image = cv2.putText(image, target_dict[pred[0]], (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 3.0, (255, 255, 255), thickness=5)
-            #image = putText_japanese(image,target_dict[pred[0]],(100,200),200,(255,255,255))
             #真ん中に画像(../image/test.png)を表示
-            image = im.putHiragana(target_dict[pred[0]],image,[50,50])
+            image = im.putHiragana(target_dict[pred[0]],image,[50,50],400)
         #FPSを表示
         fps = cap.get(cv2.CAP_PROP_FPS)
         cv2.putText(image, str(fps) + "fps", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), thickness=2)
