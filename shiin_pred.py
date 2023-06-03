@@ -8,9 +8,12 @@ import cv2
 from xgboost import XGBClassifier
 import pickle 
 
+#image/hiragana_img_manager.pyをimport
+sys.path.append("image")
+from hiragana_img_manager import HiraganaImgManager
 
 MODE = "2D" #2D or 3D
-VIDEOCAPTURE_NUM = 1 #ビデオキャプチャの番号
+VIDEOCAPTURE_NUM = 0 #ビデオキャプチャの番号
 
 target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"だ"}
 rev_target_dict = {"あ":0,"か":1,"さ":2,"た":3,"な":4,"は":5,"ま":6,"や":7,"ら":8,"わ":9,"だ":10}
@@ -64,7 +67,9 @@ def putText_japanese(img, text, point, size, color):
 #main
 if __name__ == "__main__":
     #モデルの読み込み
-    model = pickle.load(open('shiin_model_'+MODE+'.pkl', 'rb'))
+    model = pickle.load(open('shiin/shiin_model_'+MODE+'.pkl', 'rb'))
+    #ImageManagerのインスタンス生成
+    im = HiraganaImgManager()
     #ターゲットの段の入力
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(
@@ -80,6 +85,7 @@ if __name__ == "__main__":
             print("Ignoring empty camera frame.")
             continue
         image = cv2.cvtColor(cv2.flip(image, 1), cv2.COLOR_BGR2RGB)
+        image = cv2.flip(image, 1)
         image.flags.writeable = False
         results = hands.process(image)
         image.flags.writeable = True
@@ -93,7 +99,10 @@ if __name__ == "__main__":
             pred = shiin_predict(model,hand_landmarks.landmark,MODE)
             print(target_dict[pred[0]])
             #予測結果を画面に日本語で大きく表示
-            image = putText_japanese(image,target_dict[pred[0]],(100,200),200,(255,255,255))
+            #image = cv2.putText(image, target_dict[pred[0]], (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 3.0, (255, 255, 255), thickness=5)
+            #image = putText_japanese(image,target_dict[pred[0]],(100,200),200,(255,255,255))
+            #真ん中に画像(../image/test.png)を表示
+            image = im.putHiragana(target_dict[pred[0]],image,[50,50])
         #FPSを表示
         fps = cap.get(cv2.CAP_PROP_FPS)
         cv2.putText(image, str(fps) + "fps", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), thickness=2)
