@@ -1,42 +1,29 @@
-# Description: 手のランドマークをcsvファイルに書き込んで機械学習のデータセットを作成するプログラム
-
 import mediapipe as mp
+import numpy as np
 import cv2
 import serial
-import numpy as np
+import pandas as pd
+
+ARDUINO_PATH = "/dev/cu.usbmodem11101" #Arduinoのシリアルポート
 
 target_dict = {0:"あ", 1:"い", 2:"う", 3:"え", 4:"お"}
 rev_target_dict = {"あ":0, "い":1, "う":2, "え":3, "お":4}
 
-DATANUM_OF_GYO = 100 #1段あたりのデータ数
-ARDUINO_PATH = "/dev/tty.usbmodem11101" #Arduinoのシリアルポート
-VIDEOCAPTURE_NUM = 0 #ビデオキャプチャの番号
-
-def write_header(f):
-    s = "target,"
+def shiin_predict(model,pos):
+    #x,yをモデルに入力
+    pos_dict = {}
     for i in range(5):
-        s += ("x" + str(i) + ",y" + str(i) + ",")
-    s = s[:-1]
-    f.write(s + "\n")
-    return
-#各landmarkのx,y座標をカンマ区切りでまとめる
-def write_csv(f,pos,target):
-    s = target + ","
-    for i in range(5):
-        s += str(pos[i][0]) + "," + str(pos[i][1]) + ","
-    s = s[:-1]
-    f.write(s + "\n")
-    return
+        pos_dict['x'+str(i)] = pos[i][0]
+        pos_dict['y'+str(i)] = pos[i][1]
+    pos_dict = pd.DataFrame(pos_dict,index=[0]) #1行のデータフレームに変換
+    #前処理
+    #予測
+    pred = model.predict(pos_dict)
+    return pred
 
-
-#main
-
-if __name__ == "__main__":
-    #シリアル
-    ser = serial.Serial(ARDUINO_PATH, 9600)
-    #ターゲットの段の入力
-    dan = input("(あ~お)の行を入力:")
-    target = str(rev_target_dict[dan])
+if __name__ == '__main__':
+    #モデル読み込み
+    model = pd.read_pickle("boin_model_2D.pkl")
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(
         min_detection_confidence=0.7,
@@ -44,13 +31,10 @@ if __name__ == "__main__":
     )
     mp_drawing = mp.solutions.drawing_utils
     #ウェブカメラからの入力
-    cap = cv2.VideoCapture(VIDEOCAPTURE_NUM)
-    #csvファイルに書き込み
-    f = open('hand_landmark_boin.csv', 'a')  
-    #ファイルが空の場合はヘッダーを書き込み
-    if f.tell() == 0:
-        write_header(f)
-    cnt = 0
+    cap = cv2.VideoCapture(0)
+    resolution = [cap.get(cv2.CAP_PROP_FRAME_WIDTH), cap.get(cv2.CAP_PROP_FRAME_HEIGHT)]
+    #シリアル通信の設定
+    ser = serial.Serial(ARDUINO_PATH, 9600)
     #押下時の親指のx,y座標を格納
     thumb_tap = np.array([0,0])
     thumb_tap_org = np.array([0,0])
@@ -59,8 +43,6 @@ if __name__ == "__main__":
     #押下の状態
     is_tap = False
     while cap.isOpened():
-        if cnt == DATANUM_OF_GYO:
-            break
         success, image = cap.read()
         if not success:
             print("Ignoring empty camera frame.")
@@ -75,7 +57,6 @@ if __name__ == "__main__":
             hand_landmarks = results.multi_hand_landmarks[0]
             mp_drawing.draw_landmarks(
                 image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-            
             origin = [(hand_landmarks.landmark[8].x+hand_landmarks.landmark[12].x+hand_landmarks.landmark[16].x+hand_landmarks.landmark[10].x)/4,(hand_landmarks.landmark[8].y+hand_landmarks.landmark[12].y+hand_landmarks.landmark[16].y+hand_landmarks.landmark[10].y)/4]
             if is_tap:
                 #親指のx,y座標を格納
@@ -100,16 +81,11 @@ if __name__ == "__main__":
                 if msg == "release":
                     #リリース時から直近5フレームのx,y座標から親指の押下時のx,y座標を引いて移動量を計算
                     thumb_move = np.array(thumb_release)-np.array(thumb_tap)
-                    print(thumb_move)
-                    #csvファイルに書き込み
-                    write_csv(f,thumb_move,target)
-
-                    cnt += 1
+                    pred = shiin_predict(model,thumb_move)
+                    print(target_dict[pred[0]])
                     is_tap = False
         cv2.imshow('MediaPipe Hands', image)
-        if cv2.waitKey(5) & 0xFF == 27:
-            break
+        kry = cv2.waitKey(1)
 
     hands.close()
     cap.release()
-    f.close()
