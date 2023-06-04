@@ -18,6 +18,8 @@ VIDEOCAPTURE_NUM = 0 #ビデオキャプチャの番号
 target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"だ"}
 rev_target_dict = {"あ":0,"か":1,"さ":2,"た":3,"な":4,"は":5,"ま":6,"や":7,"ら":8,"わ":9,"だ":10}
 
+   
+
 def shiin_predict(model,landmark,mode):
     #x,yをモデルに入力
     landmark_dict = {}

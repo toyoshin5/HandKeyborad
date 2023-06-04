@@ -9,14 +9,44 @@ import cv2
 from xgboost import XGBClassifier
 import pickle 
 import serial
-#ui.pyから関数をインポート
-import hk_ui 
+import sys
+
+#image/hiragana_img_manager.pyをimport
+sys.path.append("image")
+from hiragana_img_manager import HiraganaImgManager
+#描画用インスタンス
+im = HiraganaImgManager()
+
 MODE = "2D" #2D or 3D
-ARDUINO_PATH = "/dev/cu.usbmodem213101" #Arduinoのシリアルポート
-VIDEOCAPTURE_NUM = 1 #ビデオキャプチャの番号
+ARDUINO_PATH = "/dev/tty.usbmodem11101" #Arduinoのシリアルポート
+VIDEOCAPTURE_NUM = 0 #ビデオキャプチャの番号
 
 target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"だ"}
 rev_target_dict = {"あ":0,"か":1,"さ":2,"た":3,"な":4,"は":5,"ま":6,"や":7,"ら":8,"わ":9,"だ":10}
+
+def showHiragana(char, shiin ,img,size,hand_landmark,res):
+    #辞書を作成
+    shiin_center_dict = {}
+    shiin_center_dict["あ"] = [((hand_landmark[8].x+hand_landmark[7].x)/2),((hand_landmark[8].y+hand_landmark[7].y)/2)]
+    shiin_center_dict["か"] = [((hand_landmark[7].x+hand_landmark[6].x)/2),((hand_landmark[7].y+hand_landmark[6].y)/2)]
+    shiin_center_dict["さ"] = [((hand_landmark[6].x+hand_landmark[5].x)/2),((hand_landmark[6].y+hand_landmark[5].y)/2)]
+    shiin_center_dict["た"] = [((hand_landmark[12].x+hand_landmark[11].x)/2),((hand_landmark[12].y+hand_landmark[11].y)/2)]
+    shiin_center_dict["な"] = [((hand_landmark[11].x+hand_landmark[10].x)/2),((hand_landmark[11].y+hand_landmark[10].y)/2)]
+    shiin_center_dict["は"] = [((hand_landmark[10].x+hand_landmark[9].x)/2),((hand_landmark[10].y+hand_landmark[9].y)/2)]
+    shiin_center_dict["ま"] = [((hand_landmark[16].x+hand_landmark[15].x)/2),((hand_landmark[16].y+hand_landmark[15].y)/2)]
+    shiin_center_dict["や"] = [((hand_landmark[15].x+hand_landmark[14].x)/2),((hand_landmark[15].y+hand_landmark[14].y)/2)]
+    shiin_center_dict["ら"] = [((hand_landmark[14].x+hand_landmark[13].x)/2),((hand_landmark[14].y+hand_landmark[13].y)/2)]
+    shiin_center_dict["だ"] = [((hand_landmark[20].x+hand_landmark[19].x)/2),((hand_landmark[20].y+hand_landmark[19].y)/2)]
+    shiin_center_dict["わ"] = [((hand_landmark[19].x+hand_landmark[18].x)/2),((hand_landmark[19].y+hand_landmark[18].y)/2)]
+    #解像度に合わせて座標を変換
+    for key in shiin_center_dict:
+        shiin_center_dict[key] = (int(shiin_center_dict[key][0]*res[0]),int(shiin_center_dict[key][1]*res[1]))
+    pos = [shiin_center_dict[shiin][0],shiin_center_dict[shiin][1]]
+    #画像合成
+    img = im.putHiragana(char,img,pos,size)
+    return img
+
+   
 
 def shiin_predict(model,landmark,mode):
     #x,yをモデルに入力
@@ -92,8 +122,8 @@ if __name__ == "__main__":
         if results.multi_hand_landmarks:
             #len(results.multi_hand_landmarks) = 写っている手の数
             hand_landmarks = results.multi_hand_landmarks[0]
-            # mp_drawing.draw_landmarks(
-            #     image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+            mp_drawing.draw_landmarks(
+                image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
             vec = [hand_landmarks.landmark[12].x-hand_landmarks.landmark[9].x,hand_landmarks.landmark[12].y-hand_landmarks.landmark[9].y]
             origin = [(hand_landmarks.landmark[8].x+hand_landmarks.landmark[12].x+hand_landmarks.landmark[16].x+hand_landmarks.landmark[10].x)/4,(hand_landmarks.landmark[8].y+hand_landmarks.landmark[12].y+hand_landmarks.landmark[16].y+hand_landmarks.landmark[10].y)/4]
             if ser.in_waiting > 0:
@@ -148,7 +178,7 @@ if __name__ == "__main__":
                         print(hiragana)
                     count = 5
             if count > 0:
-                image = hk_ui.draw_hiragana(image,resolution,hand_landmarks.landmark,False,shiin,hiragana,boin_num)
+                image = showHiragana(hiragana, shiin ,image, 200,hand_landmarks.landmark,resolution)
         #FPSを表示   
         fps = cap.get(cv2.CAP_PROP_FPS)
         cv2.putText(image, str(fps) + "fps", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), thickness=2)
