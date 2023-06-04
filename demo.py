@@ -75,11 +75,23 @@ def shiin_predict(model,landmark,mode):
     pred = model.predict(landmark_dict)
     return pred
 
+def boin_predict(model,pos):
+    #x,yをモデルに入力
+    pos_dict = {}
+    for i in range(5):
+        pos_dict['x'+str(i)] = pos[i][0]
+        pos_dict['y'+str(i)] = pos[i][1]
+    pos_dict = pd.DataFrame(pos_dict,index=[0]) #1行のデータフレームに変換
+    #前処理
+    #予測
+    pred = model.predict(pos_dict)
+    return pred
 
 #main
 if __name__ == "__main__":
     #モデルの読み込み
-    model = pickle.load(open('shiin/shiin_model_'+MODE+'.pkl', 'rb'))
+    shiin_model = pickle.load(open('shiin/shiin_model_'+MODE+'.pkl', 'rb'))
+    boin_model = pickle.load(open('boin/boin_model_'+MODE+'.pkl', 'rb'))
     #ターゲットの段の入力
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(
@@ -102,9 +114,10 @@ if __name__ == "__main__":
     #押下時の親指のx,y座標を格納
     thumb_tap = np.array([0,0])
     thumb_tap_org = np.array([0,0])
-    #リリース時の親指のx,y座標を格納
-    thumb_release = np.array([0,0])
-    thumb_release_org = np.array([0,0])
+    #リリース時から直近5フレーム親指のx,y座標を格納(前が最新)
+    thumb_release = np.array([[0,0],[0,0],[0,0],[0,0],[0,0]])
+    #押下の状態
+    is_tap = False
     #入力表示用のカウンター
     count = 0
     while cap.isOpened():
@@ -126,58 +139,42 @@ if __name__ == "__main__":
                 image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
             vec = [hand_landmarks.landmark[12].x-hand_landmarks.landmark[9].x,hand_landmarks.landmark[12].y-hand_landmarks.landmark[9].y]
             origin = [(hand_landmarks.landmark[8].x+hand_landmarks.landmark[12].x+hand_landmarks.landmark[16].x+hand_landmarks.landmark[10].x)/4,(hand_landmarks.landmark[8].y+hand_landmarks.landmark[12].y+hand_landmarks.landmark[16].y+hand_landmarks.landmark[10].y)/4]
+            if is_tap:
+                #親指のx,y座標を格納
+                thumb  = [hand_landmarks.landmark[4].x,hand_landmarks.landmark[4].y]
+                thumb = [thumb[0]-origin[0],thumb[1]-origin[1]]
+                thumb_release = np.append(thumb_release,[thumb],axis=0)
+                if (len(thumb_release) > 5) :
+                    thumb_release = np.delete(thumb_release,0,0)
             if ser.in_waiting > 0:
                 row = ser.readline()
                 msg = row.decode('utf-8').rstrip()
                 if msg == "tap":
                     #母音を判定
-                    pred = shiin_predict(model,hand_landmarks.landmark,MODE)
+                    pred = shiin_predict(shiin_model,hand_landmarks.landmark,MODE)
                     shiin = target_dict[pred[0]]
                     #親指の押下時のx,y座標を格納
                     thumb_tap_org = [hand_landmarks.landmark[4].x,hand_landmarks.landmark[4].y]
                     thumb_tap = np.array(thumb_tap_org)-np.array(origin)
-                    print(shiin,end=" ")
+                    #thum_releaseの各要素をthumb_tapで初期化
+                    thumb_release = np.array([thumb_tap,thumb_tap,thumb_tap,thumb_tap,thumb_tap])
+                    is_tap = True
                 if msg == "release":
-                    #親指のリリース時のx,y座標を格納
-                    thumb_release_org = [hand_landmarks.landmark[4].x,hand_landmarks.landmark[4].y]
-                    thumb_release = np.array(thumb_release_org)-np.array(origin)
-                    #親指の動きを計算
+                    #リリース時から直近5フレームのx,y座標から親指の押下時のx,y座標を引いて移動量を計算
                     thumb_move = np.array(thumb_release)-np.array(thumb_tap)
-                    boin_num = 0
-                    #親指の動きが小さい場合
-                    if np.linalg.norm(thumb_move) < 0.02:
-                        print("中",end=" ")
-                    else:
-                        #上下左右を判定
-                        cos_theta = np.dot(vec,thumb_move)/(np.linalg.norm(vec)*np.linalg.norm(thumb_move))
-                        gaiseki = np.cross(vec,thumb_move,)
-                        if(gaiseki > 0):
-                            theta = np.arccos(cos_theta)*180/np.pi
-                        else:
-                            theta = 360-np.arccos(cos_theta)*180/np.pi
-                        if theta < 45 or theta > 315:
-                            print("左",end=" ")
-                            boin_num = 1
-                        elif theta < 135:
-                            print("上",end=" ")
-                            boin_num = 2
-                        elif theta < 225:
-                            print("右",end=" ")
-                            boin_num = 3
-                        else:
-                            print("下",end=" ")
-                            boin_num = 4
-
+                    pred = boin_predict(boin_model,thumb_move)
+                    boin_num = pred[0]
+                    print(target_dict[boin_num])
                     #ひらがなを判定。
                     #1列目がshiinと一致する行
                     gojuon_data_boin = gojuon_data[gojuon_data[0] == shiin]
                     #その行のshiin_num列
                     hiragana = gojuon_data_boin[boin_num].values[0]
                     if hiragana != "*":
-                        #入力文字列に追加
                         print(hiragana)
+                    is_tap = False
                     count = 5
-            if count > 0:
+            if count > 0 and hiragana != "*":
                 image = showHiragana(hiragana, shiin ,image, 200,hand_landmarks.landmark,resolution)
         #FPSを表示   
         cv2.imshow('MediaPipe Hands', image)

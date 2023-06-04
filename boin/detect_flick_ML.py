@@ -9,7 +9,7 @@ ARDUINO_PATH = "/dev/cu.usbmodem11101" #Arduinoのシリアルポート
 target_dict = {0:"あ", 1:"い", 2:"う", 3:"え", 4:"お"}
 rev_target_dict = {"あ":0, "い":1, "う":2, "え":3, "お":4}
 
-def shiin_predict(model,pos):
+def boin_predict(model,pos):
     #x,yをモデルに入力
     pos_dict = {}
     for i in range(5):
@@ -81,7 +81,7 @@ if __name__ == '__main__':
                 if msg == "release":
                     #リリース時から直近5フレームのx,y座標から親指の押下時のx,y座標を引いて移動量を計算
                     thumb_move = np.array(thumb_release)-np.array(thumb_tap)
-                    pred = shiin_predict(model,thumb_move)
+                    pred = boin_predict(model,thumb_move)
                     print(target_dict[pred[0]])
                     is_tap = False
         cv2.imshow('MediaPipe Hands', image)
