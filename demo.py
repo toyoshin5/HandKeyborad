@@ -180,8 +180,6 @@ if __name__ == "__main__":
             if count > 0:
                 image = showHiragana(hiragana, shiin ,image, 200,hand_landmarks.landmark,resolution)
         #FPSを表示   
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        cv2.putText(image, str(fps) + "fps", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), thickness=2)
         cv2.imshow('MediaPipe Hands', image)
         key = cv2.waitKey(1)  
         count -= 1;             
