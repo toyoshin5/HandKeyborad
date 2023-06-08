@@ -21,8 +21,8 @@ MODE = "2D" #2D or 3D
 ARDUINO_PATH = "/dev/tty.usbmodem11101" #Arduinoのシリアルポート
 VIDEOCAPTURE_NUM = 0 #ビデオキャプチャの番号
 
-target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"だ"}
-rev_target_dict = {"あ":0,"か":1,"さ":2,"た":3,"な":4,"は":5,"ま":6,"や":7,"ら":8,"わ":9,"だ":10}
+target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"小"}
+rev_target_dict = {"あ":0,"か":1,"さ":2,"た":3,"な":4,"は":5,"ま":6,"や":7,"ら":8,"わ":9,"小":10}
 
 def showHiragana(char, shiin ,img,size,hand_landmark,res):
     #辞書を作成
@@ -36,7 +36,7 @@ def showHiragana(char, shiin ,img,size,hand_landmark,res):
     shiin_center_dict["ま"] = [((hand_landmark[16].x+hand_landmark[15].x)/2),((hand_landmark[16].y+hand_landmark[15].y)/2)]
     shiin_center_dict["や"] = [((hand_landmark[15].x+hand_landmark[14].x)/2),((hand_landmark[15].y+hand_landmark[14].y)/2)]
     shiin_center_dict["ら"] = [((hand_landmark[14].x+hand_landmark[13].x)/2),((hand_landmark[14].y+hand_landmark[13].y)/2)]
-    shiin_center_dict["だ"] = [((hand_landmark[20].x+hand_landmark[19].x)/2),((hand_landmark[20].y+hand_landmark[19].y)/2)]
+    shiin_center_dict["小"] = [((hand_landmark[20].x+hand_landmark[19].x)/2),((hand_landmark[20].y+hand_landmark[19].y)/2)]
     shiin_center_dict["わ"] = [((hand_landmark[19].x+hand_landmark[18].x)/2),((hand_landmark[19].y+hand_landmark[18].y)/2)]
     #解像度に合わせて座標を変換
     for key in shiin_center_dict:
@@ -164,7 +164,6 @@ if __name__ == "__main__":
                     thumb_move = np.array(thumb_release)-np.array(thumb_tap)
                     pred = boin_predict(boin_model,thumb_move)
                     boin_num = pred[0]
-                    print(target_dict[boin_num])
                     #ひらがなを判定。
                     #1列目がshiinと一致する行
                     gojuon_data_boin = gojuon_data[gojuon_data[0] == shiin]

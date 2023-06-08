@@ -7,7 +7,7 @@ class HiraganaImgManager:
 
     def __init__(self):
         #ひらがなの画像を読み込んで辞書に格納
-        for char in ["あ","い","う","え","お","か","き","く","け","こ","さ","し","す","せ","そ","た","ち","つ","て","と","な","に","ぬ","ね","の","は","ひ","ふ","へ","ほ","ま","み","む","め","も","や","ゆ","よ","ら","り","る","れ","ろ","わ","を","ん","だ"]:
+        for char in ["あ","い","う","え","お","か","き","く","け","こ","さ","し","す","せ","そ","た","ち","つ","て","と","な","に","ぬ","ね","の","は","ひ","ふ","へ","ほ","ま","み","む","め","も","や","ゆ","よ","ら","り","る","れ","ろ","わ","を","ん","小"]:
             self.hiragana_img_dict[char] = cv2.imread("image/"+char+".png", cv2.IMREAD_UNCHANGED)
     #画像の任意の位置にひらがなを貼り付ける
     def putHiragana(self, char, img, pos, size):
@@ -23,7 +23,7 @@ class HiraganaImgManager:
         #母音によって貼り付け先の座標を調整
         dan = None
         for index, row in self.df.iterrows():
-            for col_label, cell_value in row.iteritems():
+            for col_label, cell_value in row.items():
                 # セルの値と比較して一致する場合、列番号を取得
                 if cell_value == char:
                     dan = col_label

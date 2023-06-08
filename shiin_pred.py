@@ -15,10 +15,7 @@ from hiragana_img_manager import HiraganaImgManager
 MODE = "2D" #2D or 3D
 VIDEOCAPTURE_NUM = 0 #ビデオキャプチャの番号
 
-target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"だ"}
-rev_target_dict = {"あ":0,"か":1,"さ":2,"た":3,"な":4,"は":5,"ま":6,"や":7,"ら":8,"わ":9,"だ":10}
-
-   
+target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"小"}
 
 def shiin_predict(model,landmark,mode):
     #x,yをモデルに入力
@@ -80,7 +77,6 @@ if __name__ == "__main__":
                 image, hand_landmarks, mp_hands.HAND_CONNECTIONS)        
             #予測
             pred = shiin_predict(model,hand_landmarks.landmark,MODE)
-            print(target_dict[pred[0]])
             #予測結果を画面に日本語で大きく表示
             #真ん中に画像(../image/test.png)を表示
             image = im.putHiragana(target_dict[pred[0]],image,[50,50],400)
