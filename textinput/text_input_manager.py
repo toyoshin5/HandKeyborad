@@ -2,6 +2,7 @@ import pyautogui
 import pyperclip
 import pandas as pd
 
+#文字入力中はマウスカーソルを動かさないようにする
 class TextInputManager:
     prev_char = ""
     df = None

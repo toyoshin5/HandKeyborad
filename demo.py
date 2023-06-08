@@ -14,8 +14,14 @@ import sys
 #image/hiragana_img_manager.pyをimport
 sys.path.append("image")
 from hiragana_img_manager import HiraganaImgManager
+#textinput/text_input_manager.pyをimport
+sys.path.append("textinput")
+from text_input_manager import TextInputManager
+
 #描画用インスタンス
 im = HiraganaImgManager()
+#文字入力用インスタンス
+tim = TextInputManager()
 
 MODE = "2D" #2D or 3D
 ARDUINO_PATH = "/dev/tty.usbmodem11101" #Arduinoのシリアルポート
@@ -170,10 +176,10 @@ if __name__ == "__main__":
                     #その行のshiin_num列
                     hiragana = gojuon_data_boin[boin_num].values[0]
                     if hiragana != "*":
-                        print(hiragana)
+                        tim.mojitype(hiragana)
+                        count = 5 #入力表示用
                     is_tap = False
-                    count = 5
-            if count > 0 and hiragana != "*":
+            if count > 0:
                 image = showHiragana(hiragana, shiin ,image, 200,hand_landmarks.landmark,resolution)
         #FPSを表示   
         cv2.imshow('MediaPipe Hands', image)
