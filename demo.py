@@ -24,7 +24,7 @@ im = HiraganaImgManager()
 tim = TextInputManager()
 
 MODE = "2D" #2D or 3D
-ARDUINO_PATH = "/dev/tty.usbmodem11101" #Arduinoのシリアルポート
+ARDUINO_PATH = "/dev/tty.usbmodem1101" #Arduinoのシリアルポート
 VIDEOCAPTURE_NUM = 0 #ビデオキャプチャの番号
 
 target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"小"}
@@ -92,6 +92,11 @@ def boin_predict(model,pos):
     #予測
     pred = model.predict(pos_dict)
     return pred
+
+def mojitype_wrapper(args):
+    instance, hiragana = args
+    instance.mojitype(hiragana)
+
 
 #main
 if __name__ == "__main__":
@@ -176,6 +181,8 @@ if __name__ == "__main__":
                     #その行のshiin_num列
                     hiragana = gojuon_data_boin[boin_num].values[0]
                     if hiragana != "*":
+                        # pool = multiprocessing.Pool()
+                        # pool.apply_async(mojitype_wrapper, args=((tim, hiragana),))
                         tim.mojitype(hiragana)
                         count = 5 #入力表示用
                     is_tap = False

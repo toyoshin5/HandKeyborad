@@ -3,9 +3,9 @@ import serial
 import matplotlib.pyplot as plt
 #シリアル通信でデータを受信する
 if __name__ == '__main__':
-    ser = serial.Serial('/dev/cu.usbmodem213101', 9600)
+    ser = serial.Serial('/dev/tty.usbmodem1101', 9600)
     data = []
-    th = 1022
+    th = 900
     while True:
         if ser.in_waiting > 0:
             row = ser.readline() # 1行読み取り

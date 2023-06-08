@@ -8,9 +8,11 @@ class TextInputManager:
     df = None
     #コンストラクタ
     def __init__(self):
-
+        pyautogui.PAUSE = 0.001
         #CSVファイルを読み込む
-        self.df = pd.read_csv("dakuon_rule.csv",encoding="UTF-8", names=[0,1,2],header=None)
+        self.df = pd.read_csv("textinput/dakuon_rule.csv",encoding="UTF-8", names=[0,1,2],header=None)
+    
+        
     #macOSが実際に入力する関数
     def __mojiwrite(self,char):
         pyperclip.copy(char)
