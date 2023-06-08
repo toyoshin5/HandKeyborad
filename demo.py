@@ -188,6 +188,8 @@ if __name__ == "__main__":
                     is_tap = False
             if count > 0:
                 image = showHiragana(hiragana, shiin ,image, 200,hand_landmarks.landmark,resolution)
+            if is_tap:
+                image = showHiragana(shiin, shiin ,image, 100,hand_landmarks.landmark,resolution)
         #FPSを表示   
         cv2.imshow('MediaPipe Hands', image)
         key = cv2.waitKey(1)  
