@@ -14,6 +14,10 @@ mode = "2D" #2D or 3D
 target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"小"}
 rev_target_dict = {"あ":0,"か":1,"さ":2,"た":3,"な":4,"は":5,"ま":6,"や":7,"ら":8,"わ":9,"小":10}
 
+def rotate_coordinates(rotation_matrix, coordinates):
+    rotated_coordinates = np.einsum('ijk,jk->ik', rotation_matrix, coordinates)
+    return np.array(rotated_coordinates[0]), np.array(rotated_coordinates[1])
+
 #csvを読み込み
 df = pd.read_csv('hand_landmark.csv')
 df = df.dropna()
@@ -47,26 +51,13 @@ if mode == "2D":
     sin_test = a_test[1]/np.sqrt(a_test[0]**2+a_test[1]**2)
     cos_test = a_test[0]/np.sqrt(a_test[0]**2+a_test[1]**2)
     #回転行列を計算
-    rot_train = np.array([[cos_train,-sin_train],[sin_train,cos_train]])
-    rot_test = np.array([[cos_test,-sin_test],[sin_test,cos_test]])
-    # 回転行列の形状を (n, 2, 2) に変形
-    rot_train = rot_train.transpose(2, 0, 1)
-    rot_test = rot_test.transpose(2, 0, 1)
+    rot_train = np.array([[cos_train,sin_train],[-sin_train,cos_train]])
+    rot_test = np.array([[cos_test,sin_test],[-sin_test,cos_test]])
+
     for i in range(21):
-        #回転行列を用いて変換
-        coordinates = np.array([X_train['x'+str(i)],X_train['y'+str(i)]]).transpose()
-        # 回転を行う
-        rotated_coordinates = np.matmul(rot_train, coordinates[:, :, np.newaxis])
-        # 変換後の座標を格納
-        X_train['x'+str(i)] = rotated_coordinates[:, 0, 0]
-        X_train['y'+str(i)] = rotated_coordinates[:, 1, 0]
-        #回転行列を用いて変換
-        coordinates = np.array([X_test['x'+str(i)],X_test['y'+str(i)]]).transpose()
-        # 回転を行う
-        rotated_coordinates = np.matmul(rot_test, coordinates[:, :, np.newaxis])
-        # 変換後の座標を格納
-        X_test['x'+str(i)] = rotated_coordinates[:, 0, 0]
-        X_test['y'+str(i)] = rotated_coordinates[:, 1, 0]
+        # 座標の回転
+        X_test['x'+str(i)],X_test['y'+str(i)] = rotate_coordinates(rot_test, np.array([X_test['x'+str(i)],X_test['y'+str(i)]]))
+        X_train['x'+str(i)],X_train['y'+str(i)] = rotate_coordinates(rot_train, np.array([X_train['x'+str(i)],X_train['y'+str(i)]]))
 
 #4から各点までの変位を計算
 hand_size_train = np.sqrt((X_train['x17']-X_train['x0'])**2+(X_train['y17']-X_train['y0'])**2)

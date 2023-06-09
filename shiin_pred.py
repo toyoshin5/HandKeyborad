@@ -17,6 +17,11 @@ VIDEOCAPTURE_NUM = 0 #ビデオキャプチャの番号
 
 target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"小"}
 
+def rotate_coordinates(rotation_matrix, coordinates):
+    rotated_coordinates = np.einsum('ijk,jk->ik', rotation_matrix, coordinates)
+    return np.array(rotated_coordinates[0]), np.array(rotated_coordinates[1])
+
+
 def shiin_predict(model,landmark,mode):
     #x,yをモデルに入力
     landmark_dict = {}
@@ -33,18 +38,11 @@ def shiin_predict(model,landmark,mode):
         sin_land = a[1]/np.sqrt(a[0]**2+a[1]**2)
         cos_land = a[0]/np.sqrt(a[0]**2+a[1]**2)
         #回転行列を計算
-        rot_mat = np.array([[cos_land,-sin_land],[sin_land,cos_land]])
-        # 回転行列の形状を (n, 2, 2) に変形
-        rot_mat = rot_mat.transpose(2, 0, 1)
+        rot_mat = np.array([[cos_land,sin_land],[-sin_land,cos_land]])
 
         for i in range(21):
-            #回転行列
-            coordinates = np.array([landmark_dict['x'+str(i)],landmark_dict['y'+str(i)]]).transpose()
-            #回転を行う
-            rotated_coordinates = np.matmul(rot_mat, coordinates[:, :, np.newaxis])
-            #変換後の座標を格納
-            landmark_dict['x'+str(i)] = rotated_coordinates[:,0,0]
-            landmark_dict['y'+str(i)] = rotated_coordinates[:,1,0]
+            #x,yを回転変換
+            landmark_dict['x'+str(i)],landmark_dict['y'+str(i)] = rotate_coordinates(rot_mat,np.array([landmark_dict['x'+str(i)],landmark_dict['y'+str(i)]]))
 
     #4から各点までの変位を特徴量に追加
     hand_size = np.sqrt((landmark_dict['x0']-landmark_dict['x17'])**2+(landmark_dict['y0']-landmark_dict['y17'])**2)
