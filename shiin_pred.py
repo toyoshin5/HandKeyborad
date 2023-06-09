@@ -27,13 +27,35 @@ def shiin_predict(model,landmark,mode):
             landmark_dict['z'+str(i)] = landmark[i].z
     landmark_dict = pd.DataFrame(landmark_dict,index=[0]) #1行のデータフレームに変換
     #前処理
-    #4から各点までの距離を特徴量に追加
+    if mode == "2D":
+        #回転変換を行う
+        a = np.array([landmark_dict['x17']-landmark_dict['x0'],landmark_dict['y17']-landmark_dict['y0']])
+        sin_land = a[1]/np.sqrt(a[0]**2+a[1]**2)
+        cos_land = a[0]/np.sqrt(a[0]**2+a[1]**2)
+        #回転行列を計算
+        rot_mat = np.array([[cos_land,-sin_land],[sin_land,cos_land]])
+        # 回転行列の形状を (n, 2, 2) に変形
+        rot_mat = rot_mat.transpose(2, 0, 1)
+
+        for i in range(21):
+            #回転行列
+            coordinates = np.array([landmark_dict['x'+str(i)],landmark_dict['y'+str(i)]]).transpose()
+            #回転を行う
+            rotated_coordinates = np.matmul(rot_mat, coordinates[:, :, np.newaxis])
+            #変換後の座標を格納
+            landmark_dict['x'+str(i)] = rotated_coordinates[:,0,0]
+            landmark_dict['y'+str(i)] = rotated_coordinates[:,1,0]
+
+    #4から各点までの変位を特徴量に追加
     hand_size = np.sqrt((landmark_dict['x0']-landmark_dict['x17'])**2+(landmark_dict['y0']-landmark_dict['y17'])**2)
-    for i in range(5,21):
+    for i in range(1,21):
         if mode == "2D":
-            landmark_dict['distance'+str(i)] = np.sqrt((landmark_dict['x4']-landmark_dict['x'+str(i)])**2+(landmark_dict['y4']-landmark_dict['y'+str(i)])**2)/hand_size
+            landmark_dict['offset_x'+str(i)] = (landmark_dict['x4']-landmark_dict['x'+str(i)])/hand_size
+            landmark_dict['offset_y'+str(i)] = (landmark_dict['y4']-landmark_dict['y'+str(i)])/hand_size
         elif mode == "3D":
-            landmark_dict['distance'+str(i)] = np.sqrt((landmark_dict['x4']-landmark_dict['x'+str(i)])**2+(landmark_dict['y4']-landmark_dict['y'+str(i)])**2+(landmark_dict['z4']-landmark_dict['z'+str(i)])**2)/hand_size
+            landmark_dict['offset_x'+str(i)] = (landmark_dict['x4']-landmark_dict['x'+str(i)])/hand_size
+            landmark_dict['offset_y'+str(i)] = (landmark_dict['y4']-landmark_dict['y'+str(i)])/hand_size
+            landmark_dict['offset_z'+str(i)] = (landmark_dict['z4']-landmark_dict['z'+str(i)])/hand_size
     #xn,ynを消去
     for i in range(0,21):
         if mode == "2D":
@@ -80,9 +102,6 @@ if __name__ == "__main__":
             #予測結果を画面に日本語で大きく表示
             #真ん中に画像(../image/test.png)を表示
             image = im.putHiragana(target_dict[pred[0]],image,[50,50],400)
-        #FPSを表示
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        cv2.putText(image, str(fps) + "fps", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), thickness=2)
         cv2.imshow('MediaPipe Hands', image)
         if cv2.waitKey(5) & 0xFF == 27: #ESCキーで終了
             break

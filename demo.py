@@ -68,9 +68,12 @@ def shiin_predict(model,landmark,mode):
     hand_size = np.sqrt((landmark_dict['x0']-landmark_dict['x17'])**2+(landmark_dict['y0']-landmark_dict['y17'])**2)
     for i in range(5,21):
         if mode == "2D":
-            landmark_dict['distance'+str(i)] = np.sqrt((landmark_dict['x4']-landmark_dict['x'+str(i)])**2+(landmark_dict['y4']-landmark_dict['y'+str(i)])**2)/hand_size
+            landmark_dict['offset_x'+str(i)] = (landmark_dict['x4']-landmark_dict['x'+str(i)])/hand_size
+            landmark_dict['offset_y'+str(i)] = (landmark_dict['y4']-landmark_dict['y'+str(i)])/hand_size
         elif mode == "3D":
-            landmark_dict['distance'+str(i)] = np.sqrt((landmark_dict['x4']-landmark_dict['x'+str(i)])**2+(landmark_dict['y4']-landmark_dict['y'+str(i)])**2+(landmark_dict['z4']-landmark_dict['z'+str(i)])**2)/hand_size
+            landmark_dict['offset_x'+str(i)] = (landmark_dict['x4']-landmark_dict['x'+str(i)])/hand_size
+            landmark_dict['offset_y'+str(i)] = (landmark_dict['y4']-landmark_dict['y'+str(i)])/hand_size
+            landmark_dict['offset_z'+str(i)] = (landmark_dict['z4']-landmark_dict['z'+str(i)])/hand_size
     #xn,ynを消去
     for i in range(0,21):
         if mode == "2D":
@@ -190,6 +193,9 @@ if __name__ == "__main__":
                 image = showHiragana(hiragana, shiin ,image, 200,hand_landmarks.landmark,resolution)
             if is_tap:
                 image = showHiragana(shiin, shiin ,image, 100,hand_landmarks.landmark,resolution)
+        else:
+            if ser.in_waiting > 0:
+                ser.readline()#空読み
         #FPSを表示   
         cv2.imshow('MediaPipe Hands', image)
         key = cv2.waitKey(1)  

@@ -26,16 +26,64 @@ y = df['target']
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
 #前処理
-#4から各点までの距離を特徴量に追加
-hand_size_train = np.sqrt((X_train['x0']-X_train['x17'])**2+(X_train['y0']-X_train['y17'])**2)
-hand_size_test = np.sqrt((X_test['x0']-X_test['x17'])**2+(X_test['y0']-X_test['y17'])**2)
-for i in range(5,21):
+#xnを全て反転
+for i in range(21):
+    X_train['x'+str(i)] = X_train['x'+str(i)]*-1
+    X_test['x'+str(i)] = X_test['x'+str(i)]*-1
+#4から各点まで変位を計算
+# hand_size_train = np.sqrt((X_train['x0']-X_train['x17'])**2+(X_train['y0']-X_train['y17'])**2)
+# hand_size_test = np.sqrt((X_test['x0']-X_test['x17'])**2+(X_test['y0']-X_test['y17'])**2)
+
+#0,17のベクトルが[0,1]となるように線形変換を行うための行列を計算
+#アフィン変換から座標を求めるためには通常3点ずつ座標が必要だが、今回縦横比維持の成約付きのため、2点でよい
+
+
+if mode == "2D":
+    #回転変換を行う
+    a_train = np.array([X_train['x17']-X_train['x0'],X_train['y17']-X_train['y0']])
+    a_test = np.array([X_test['x17']-X_test['x0'],X_test['y17']-X_test['y0']])
+    sin_train = a_train[1]/np.sqrt(a_train[0]**2+a_train[1]**2)
+    cos_train = a_train[0]/np.sqrt(a_train[0]**2+a_train[1]**2)
+    sin_test = a_test[1]/np.sqrt(a_test[0]**2+a_test[1]**2)
+    cos_test = a_test[0]/np.sqrt(a_test[0]**2+a_test[1]**2)
+    #回転行列を計算
+    rot_train = np.array([[cos_train,-sin_train],[sin_train,cos_train]])
+    rot_test = np.array([[cos_test,-sin_test],[sin_test,cos_test]])
+    # 回転行列の形状を (n, 2, 2) に変形
+    rot_train = rot_train.transpose(2, 0, 1)
+    rot_test = rot_test.transpose(2, 0, 1)
+    for i in range(21):
+        #回転行列を用いて変換
+        coordinates = np.array([X_train['x'+str(i)],X_train['y'+str(i)]]).transpose()
+        # 回転を行う
+        rotated_coordinates = np.matmul(rot_train, coordinates[:, :, np.newaxis])
+        # 変換後の座標を格納
+        X_train['x'+str(i)] = rotated_coordinates[:, 0, 0]
+        X_train['y'+str(i)] = rotated_coordinates[:, 1, 0]
+        #回転行列を用いて変換
+        coordinates = np.array([X_test['x'+str(i)],X_test['y'+str(i)]]).transpose()
+        # 回転を行う
+        rotated_coordinates = np.matmul(rot_test, coordinates[:, :, np.newaxis])
+        # 変換後の座標を格納
+        X_test['x'+str(i)] = rotated_coordinates[:, 0, 0]
+        X_test['y'+str(i)] = rotated_coordinates[:, 1, 0]
+
+#4から各点までの変位を計算
+hand_size_train = np.sqrt((X_train['x17']-X_train['x0'])**2+(X_train['y17']-X_train['y0'])**2)
+hand_size_test = np.sqrt((X_test['x17']-X_test['x0'])**2+(X_test['y17']-X_test['y0'])**2)
+for i in range(1,21):
     if mode == "3D":
-        X_train['distance'+str(i)] = np.sqrt((X_train['x4']-X_train['x'+str(i)])**2+(X_train['y4']-X_train['y'+str(i)])**2+(X_train['z4']-X_train['z'+str(i)])**2)/hand_size_train
-        X_test['distance'+str(i)] = np.sqrt((X_test['x4']-X_test['x'+str(i)])**2+(X_test['y4']-X_test['y'+str(i)])**2+(X_test['z4']-X_test['z'+str(i)])**2)/hand_size_test
+        X_train['offset_x'+str(i)] = (X_train['x4']-X_train['x'+str(i)])/hand_size_train
+        X_train['offset_y'+str(i)] = (X_train['y4']-X_train['y'+str(i)])/hand_size_train
+        X_train['offset_z'+str(i)] = (X_train['z4']-X_train['z'+str(i)])/hand_size_train
+        X_test['offset_x'+str(i)] = (X_test['x4']-X_test['x'+str(i)])/hand_size_test
+        X_test['offset_y'+str(i)] = (X_test['y4']-X_test['y'+str(i)])/hand_size_test
+        X_test['offset_z'+str(i)] = (X_test['z4']-X_test['z'+str(i)])/hand_size_test
     elif mode == "2D":
-        X_train['distance'+str(i)] = np.sqrt((X_train['x4']-X_train['x'+str(i)])**2+(X_train['y4']-X_train['y'+str(i)])**2)/hand_size_train
-        X_test['distance'+str(i)] = np.sqrt((X_test['x4']-X_test['x'+str(i)])**2+(X_test['y4']-X_test['y'+str(i)])**2)/hand_size_test
+        X_train['offset_x'+str(i)] = (X_train['x4']-X_train['x'+str(i)])/hand_size_train
+        X_train['offset_y'+str(i)] = (X_train['y4']-X_train['y'+str(i)])/hand_size_train
+        X_test['offset_x'+str(i)] = (X_test['x4']-X_test['x'+str(i)])/hand_size_test
+        X_test['offset_y'+str(i)] = (X_test['y4']-X_test['y'+str(i)])/hand_size_test
 #xn,ynを消去
 for i in range(0,21):
     X_train = X_train.drop(['x'+str(i),'y'+str(i),'z'+str(i)],axis=1)
