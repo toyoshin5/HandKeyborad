@@ -8,8 +8,8 @@ import numpy as np
 target_dict = {0:"あ", 1:"い", 2:"う", 3:"え", 4:"お"}
 rev_target_dict = {"あ":0, "い":1, "う":2, "え":3, "お":4}
 
-DATANUM_OF_GYO = 100 #1段あたりのデータ数
-ARDUINO_PATH = "/dev/tty.usbmodem11101" #Arduinoのシリアルポート
+DATANUM_OF_GYO = 200 #1段あたりのデータ数
+ARDUINO_PATH = "/dev/tty.usbmodem1301" #Arduinoのシリアルポート
 VIDEOCAPTURE_NUM = 0 #ビデオキャプチャの番号
 
 def write_header(f):
@@ -100,6 +100,14 @@ if __name__ == "__main__":
                 if msg == "release":
                     #リリース時から直近5フレームのx,y座標から親指の押下時のx,y座標を引いて移動量を計算
                     thumb_move = np.array(thumb_release)-np.array(thumb_tap)
+                    #中指のむきに従って、回転
+                    a = np.array([hand_landmarks.landmark[9].x-hand_landmarks.landmark[12].x,hand_landmarks.landmark[9].y-hand_landmarks.landmark[12].y])
+                    sin_land = a[1]/np.sqrt(a[0]**2+a[1]**2)
+                    cos_land = a[0]/np.sqrt(a[0]**2+a[1]**2)
+                    #回転行列を計算
+                    rot_mat = np.array([[cos_land,sin_land],[-sin_land,cos_land]])
+                    #親指の移動量を回転
+                    thumb_move = np.dot(rot_mat,thumb_move.T).T
                     print(thumb_move)
                     #csvファイルに書き込み
                     write_csv(f,thumb_move,target)

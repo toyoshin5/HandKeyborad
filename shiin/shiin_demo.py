@@ -17,29 +17,46 @@ ARDUINO_PATH = "/dev/cu.usbmodem101" #Arduinoのシリアルポート
 target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"小"}
 rev_target_dict = {"あ":0,"か":1,"さ":2,"た":3,"な":4,"は":5,"ま":6,"や":7,"ら":8,"わ":9,"小":10}
 
+
 def shiin_predict(model,landmark,mode):
     #x,yをモデルに入力
     landmark_dict = {}
     for i in range(21):
         landmark_dict['x'+str(i)] = landmark[i].x
         landmark_dict['y'+str(i)] = landmark[i].y
-        if mode == "3D":
-            landmark_dict['z'+str(i)] = landmark[i].z
+        landmark_dict['z'+str(i)] = landmark[i].z
     landmark_dict = pd.DataFrame(landmark_dict,index=[0]) #1行のデータフレームに変換
     #前処理
-    #4から各点までの距離を特徴量に追加
+    if mode == "2D":
+        #回転変換を行う
+        a = np.array([landmark_dict['x17']-landmark_dict['x0'],landmark_dict['y17']-landmark_dict['y0']])
+        sin_land = a[1]/np.sqrt(a[0]**2+a[1]**2)
+        cos_land = a[0]/np.sqrt(a[0]**2+a[1]**2)
+        #回転行列を計算
+        rot_mat = np.array([[cos_land,sin_land],[-sin_land,cos_land]])
+
+        for i in range(21):
+            #x,yを回転変換
+            landmark_dict['x'+str(i)],landmark_dict['y'+str(i)] = rotate_coordinates(rot_mat,np.array([landmark_dict['x'+str(i)],landmark_dict['y'+str(i)]]))
+        #中点を計算
+        cnt = 21
+        for i in range(5,20):
+            if i%4 != 0:
+                landmark_dict["x"+str(cnt)],landmark_dict["y"+str(cnt)],landmark_dict["z"+str(cnt)] = (landmark_dict['x'+str(i)]+landmark_dict['x'+str(i+1)])/2,(landmark_dict['y'+str(i)]+landmark_dict['y'+str(i+1)])/2,(landmark_dict['z'+str(i)]+landmark_dict['z'+str(i+1)])/2
+                cnt += 1   
+    #4から各点までの変位を特徴量に追加
     hand_size = np.sqrt((landmark_dict['x0']-landmark_dict['x17'])**2+(landmark_dict['y0']-landmark_dict['y17'])**2)
-    for i in range(5,21):
+    for i in range(21,32):
         if mode == "2D":
-            landmark_dict['distance'+str(i)] = np.sqrt((landmark_dict['x4']-landmark_dict['x'+str(i)])**2+(landmark_dict['y4']-landmark_dict['y'+str(i)])**2)/hand_size
+            landmark_dict['offset_x'+str(i)] = (landmark_dict['x4']-landmark_dict['x'+str(i)])/hand_size
+            landmark_dict['offset_y'+str(i)] = (landmark_dict['y4']-landmark_dict['y'+str(i)])/hand_size
         elif mode == "3D":
-            landmark_dict['distance'+str(i)] = np.sqrt((landmark_dict['x4']-landmark_dict['x'+str(i)])**2+(landmark_dict['y4']-landmark_dict['y'+str(i)])**2+(landmark_dict['z4']-landmark_dict['z'+str(i)])**2)/hand_size
+            landmark_dict['offset_x'+str(i)] = (landmark_dict['x4']-landmark_dict['x'+str(i)])/hand_size
+            landmark_dict['offset_y'+str(i)] = (landmark_dict['y4']-landmark_dict['y'+str(i)])/hand_size
+            landmark_dict['offset_z'+str(i)] = (landmark_dict['z4']-landmark_dict['z'+str(i)])/hand_size
     #xn,ynを消去
-    for i in range(0,21):
-        if mode == "2D":
-            landmark_dict = landmark_dict.drop(['x'+str(i),'y'+str(i)],axis=1)
-        elif mode == "3D":
-            landmark_dict = landmark_dict.drop(['x'+str(i),'y'+str(i),'z'+str(i)],axis=1)
+    for i in range(0,32):
+        landmark_dict = landmark_dict.drop(['x'+str(i),'y'+str(i),'z'+str(i)],axis=1)
     #予測
     pred = model.predict(landmark_dict)
     return pred

@@ -3,7 +3,7 @@ import serial
 import matplotlib.pyplot as plt
 #シリアル通信でデータを受信する
 if __name__ == '__main__':
-    ser = serial.Serial('/dev/tty.usbmodem1101', 9600)
+    ser = serial.Serial('/dev/tty.usbmodem1301', 9600)
     data = []
     th = 900
     while True:

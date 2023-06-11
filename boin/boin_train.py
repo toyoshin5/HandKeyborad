@@ -26,7 +26,7 @@ y = df['target']
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
 #前処理なし
-model = XGBClassifier(early_stopping_rounds=5)
+model = XGBClassifier(early_stopping_rounds=10)
 #ログを100回ごとに出力
 
 model.fit(X_train,y_train,eval_metric=["mlogloss"],eval_set=[(X_train, y_train),(X_test, y_test)],verbose=1)

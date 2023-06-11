@@ -58,11 +58,17 @@ if mode == "2D":
         # 座標の回転
         X_test['x'+str(i)],X_test['y'+str(i)] = rotate_coordinates(rot_test, np.array([X_test['x'+str(i)],X_test['y'+str(i)]]))
         X_train['x'+str(i)],X_train['y'+str(i)] = rotate_coordinates(rot_train, np.array([X_train['x'+str(i)],X_train['y'+str(i)]]))
-
+    #中点を計算
+    cnt = 21
+    for i in range(5,20):
+        if i%4 != 0:
+            X_train["x"+str(cnt)],X_train["y"+str(cnt)],X_train["z"+str(cnt)] = (X_train['x'+str(i)]+X_train['x'+str(i+1)])/2,(X_train['y'+str(i)]+X_train['y'+str(i+1)])/2,(X_train['z'+str(i)]+X_train['z'+str(i+1)])/2
+            X_test["x"+str(cnt)],X_test["y"+str(cnt)],X_test["z"+str(cnt)] = (X_test['x'+str(i)]+X_test['x'+str(i+1)])/2,(X_test['y'+str(i)]+X_test['y'+str(i+1)])/2,(X_test['z'+str(i)]+X_test['z'+str(i+1)])/2
+            cnt += 1
 #4から各点までの変位を計算
 hand_size_train = np.sqrt((X_train['x17']-X_train['x0'])**2+(X_train['y17']-X_train['y0'])**2)
 hand_size_test = np.sqrt((X_test['x17']-X_test['x0'])**2+(X_test['y17']-X_test['y0'])**2)
-for i in range(1,21):
+for i in range(21,32):
     if mode == "3D":
         X_train['offset_x'+str(i)] = (X_train['x4']-X_train['x'+str(i)])/hand_size_train
         X_train['offset_y'+str(i)] = (X_train['y4']-X_train['y'+str(i)])/hand_size_train
@@ -76,10 +82,11 @@ for i in range(1,21):
         X_test['offset_x'+str(i)] = (X_test['x4']-X_test['x'+str(i)])/hand_size_test
         X_test['offset_y'+str(i)] = (X_test['y4']-X_test['y'+str(i)])/hand_size_test
 #xn,ynを消去
-for i in range(0,21):
+for i in range(0,32):
     X_train = X_train.drop(['x'+str(i),'y'+str(i),'z'+str(i)],axis=1)
     X_test = X_test.drop(['x'+str(i),'y'+str(i),'z'+str(i)],axis=1)
-model = XGBClassifier(early_stopping_rounds=10)
+
+model = XGBClassifier(early_stopping_rounds=1)
 #ログを100回ごとに出力
 
 model.fit(X_train,y_train,eval_metric=["mlogloss"],eval_set=[(X_train, y_train),(X_test, y_test)],verbose=1)
