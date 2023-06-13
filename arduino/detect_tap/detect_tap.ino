@@ -19,7 +19,7 @@ void loop() {
   }
   if(vol_value >= 1023){
     if(isOn){
-      delay(50);
+      delay(100);
       Serial.println("release");
       isOn = false;
     }
