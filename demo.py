@@ -89,13 +89,19 @@ def shiin_predict(model,landmark,mode):
     hand_size = np.sqrt((landmark_dict['x0']-landmark_dict['x17'])**2+(landmark_dict['y0']-landmark_dict['y17'])**2)
     for i in range(21,32):
         if mode == "2D":
-            landmark_dict['offset_x'+str(i)] = (landmark_dict['x4']-landmark_dict['x'+str(i)])/hand_size
-            landmark_dict['offset_y'+str(i)] = (landmark_dict['y4']-landmark_dict['y'+str(i)])/hand_size
+            # 列を結合する
+            landmark_dict = pd.concat([landmark_dict, pd.DataFrame({
+                'offset_x'+str(i): (landmark_dict['x4'] - landmark_dict['x'+str(i)]) / hand_size,
+                'offset_y'+str(i): (landmark_dict['y4'] - landmark_dict['y'+str(i)]) / hand_size
+            })], axis=1)
         elif mode == "3D":
-            landmark_dict['offset_x'+str(i)] = (landmark_dict['x4']-landmark_dict['x'+str(i)])/hand_size
-            landmark_dict['offset_y'+str(i)] = (landmark_dict['y4']-landmark_dict['y'+str(i)])/hand_size
-            landmark_dict['offset_z'+str(i)] = (landmark_dict['z4']-landmark_dict['z'+str(i)])/hand_size
-    #xn,ynを消去
+            # 列を結合する
+            landmark_dict = pd.concat([landmark_dict, pd.DataFrame({
+                'offset_x'+str(i): (landmark_dict['x4'] - landmark_dict['x'+str(i)])/ hand_size,
+                'offset_y'+str(i): (landmark_dict['y4'] - landmark_dict['y'+str(i)])/ hand_size,
+                'offset_z'+str(i): (landmark_dict['z4'] - landmark_dict['z'+str(i)])/ hand_size
+            })], axis=1)
+            #xn,ynを消去
     for i in range(0,32):
         landmark_dict = landmark_dict.drop(['x'+str(i),'y'+str(i),'z'+str(i)],axis=1)
     #予測
@@ -145,9 +151,12 @@ if __name__ == "__main__":
     gojuon_data = pd.read_csv("50on.csv",encoding="UTF-8", header=None)
     #押下時の親指のx,y座標を格納
     thumb_tap = np.array([0,0])
-    thumb_tap_org = np.array([0,0])
-    #リリース時から直近5フレーム親指のx,y座標を格納(前が最新)
-    thumb_release = np.array([[0,0],[0,0],[0,0],[0,0],[0,0]])
+    #リリース時の親指のx,y座標を格納
+    thumb_release = np.array([0,0])
+    #移動量のx,y座標を格納
+    thumb_move = np.array([0,0])
+    #タップしたときに親指から最も近い点の番号を格納
+    min_idx = 0
     #押下の状態
     is_tap = False
     #入力表示用のカウンター
@@ -169,15 +178,6 @@ if __name__ == "__main__":
             hand_landmarks = results.multi_hand_landmarks[0]
             mp_drawing.draw_landmarks(
                 image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-            vec = [hand_landmarks.landmark[12].x-hand_landmarks.landmark[9].x,hand_landmarks.landmark[12].y-hand_landmarks.landmark[9].y]
-            origin = [(hand_landmarks.landmark[8].x+hand_landmarks.landmark[12].x+hand_landmarks.landmark[16].x+hand_landmarks.landmark[10].x)/4,(hand_landmarks.landmark[8].y+hand_landmarks.landmark[12].y+hand_landmarks.landmark[16].y+hand_landmarks.landmark[10].y)/4]
-            if is_tap:
-                #親指のx,y座標を格納
-                thumb  = [hand_landmarks.landmark[4].x,hand_landmarks.landmark[4].y]
-                thumb = [thumb[0]-origin[0],thumb[1]-origin[1]]
-                thumb_release = np.append(thumb_release,[thumb],axis=0)
-                if (len(thumb_release) > 5) :
-                    thumb_release = np.delete(thumb_release,0,0)
             if ser.in_waiting > 0:
                 row = ser.readline()
                 msg = row.decode('utf-8').rstrip()
@@ -187,15 +187,44 @@ if __name__ == "__main__":
                     shiin = target_dict[pred[0]]
                     #親指の押下時のx,y座標を格納
                     thumb_tap_org = [hand_landmarks.landmark[4].x,hand_landmarks.landmark[4].y]
+                    #親指から最も近い点を探す
+                    min_dist = 100
+                    for i in range(5,21):
+                        dist = np.linalg.norm(np.array([hand_landmarks.landmark[i].x,hand_landmarks.landmark[i].y])-np.array(thumb_tap_org))
+                        if dist < min_dist:
+                            min_dist = dist
+                            min_idx = i
+                    origin = [hand_landmarks.landmark[min_idx].x,hand_landmarks.landmark[min_idx].y]
                     thumb_tap = np.array(thumb_tap_org)-np.array(origin)
-                    #thum_releaseの各要素をthumb_tapで初期化
-                    thumb_release = np.array([thumb_tap,thumb_tap,thumb_tap,thumb_tap,thumb_tap])
                     is_tap = True
                 if msg == "release":
-                    #リリース時から直近5フレームのx,y座標から親指の押下時のx,y座標を引いて移動量を計算
+                    #移動量を計算
+                    boin_num = 0
+                    thumb_release_org = [hand_landmarks.landmark[4].x,hand_landmarks.landmark[4].y]
+                    origin = [hand_landmarks.landmark[min_idx].x,hand_landmarks.landmark[min_idx].y]
+                    thumb_release = np.array(thumb_release_org)-np.array(origin)
                     thumb_move = np.array(thumb_release)-np.array(thumb_tap)
-                    pred = boin_predict(boin_model,thumb_move)
-                    boin_num = pred[0]
+                    thumb_move_res = np.array([thumb_move[0]*resolution[0],thumb_move[1]*resolution[1]])
+                    #親指の動きが小さい場合
+                    if abs(thumb_move_res[0]) < 25 and abs(thumb_move_res[1]) < 25:
+                        boin_num = 0
+                    else:
+                        #上下左右を判定
+                        vec = np.array([1,0])
+                        cos_theta = np.dot(vec,thumb_move)/(np.linalg.norm(vec)*np.linalg.norm(thumb_move))
+                        gaiseki = np.cross(vec,thumb_move,)
+                        if(gaiseki > 0):
+                            theta = np.arccos(cos_theta)*180/np.pi
+                        else:
+                            theta = 360-np.arccos(cos_theta)*180/np.pi
+                        if theta < 45 or theta > 315:                           
+                            boin_num = 3
+                        elif theta < 135:                    
+                            boin_num = 4
+                        elif theta < 225:
+                            boin_num = 1
+                        else:
+                            boin_num = 2
                     #ひらがなを判定。
                     #1列目がshiinと一致する行
                     gojuon_data_boin = gojuon_data[gojuon_data[0] == shiin]
@@ -210,7 +239,7 @@ if __name__ == "__main__":
             if count > 0:
                 image = showHiragana(hiragana, shiin ,image, 200,hand_landmarks.landmark,resolution)
             if is_tap:
-                image = showHiragana(shiin, shiin ,image, 100,hand_landmarks.landmark,resolution)
+                image = showHiragana(shiin, shiin ,image, 70,hand_landmarks.landmark,resolution)
         else:
             if ser.in_waiting > 0:
                 ser.readline()#空読み
