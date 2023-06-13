@@ -50,7 +50,7 @@ def shiin_predict(model,landmark,mode):
                 cnt += 1   
     #4から各点までの変位を特徴量に追加
     hand_size = np.sqrt((landmark_dict['x0']-landmark_dict['x17'])**2+(landmark_dict['y0']-landmark_dict['y17'])**2)
-    for i in range(21,32):
+    for i in range(21,33):
         if mode == "2D":
             landmark_dict['offset_x'+str(i)] = (landmark_dict['x4']-landmark_dict['x'+str(i)])/hand_size
             landmark_dict['offset_y'+str(i)] = (landmark_dict['y4']-landmark_dict['y'+str(i)])/hand_size
@@ -59,7 +59,7 @@ def shiin_predict(model,landmark,mode):
             landmark_dict['offset_y'+str(i)] = (landmark_dict['y4']-landmark_dict['y'+str(i)])/hand_size
             landmark_dict['offset_z'+str(i)] = (landmark_dict['z4']-landmark_dict['z'+str(i)])/hand_size
     #xn,ynを消去
-    for i in range(0,32):
+    for i in range(0,33):
         landmark_dict = landmark_dict.drop(['x'+str(i),'y'+str(i),'z'+str(i)],axis=1)
     #予測
     pred = model.predict(landmark_dict)

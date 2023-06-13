@@ -26,6 +26,7 @@ tim = TextInputManager()
 MODE = "2D" #2D or 3D
 ARDUINO_PATH = "/dev/tty.usbmodem1301" #Arduinoのシリアルポート
 VIDEOCAPTURE_NUM = 0 #ビデオキャプチャの番号
+USE_ML = False #子音判定に機械学習を使うかどうか
 
 target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"小"}
 rev_target_dict = {"あ":0,"か":1,"さ":2,"た":3,"な":4,"は":5,"ま":6,"や":7,"ら":8,"わ":9,"小":10}
@@ -57,6 +58,39 @@ def rotate_coordinates(rotation_matrix, coordinates):
     return np.array(rotated_coordinates[0]), np.array(rotated_coordinates[1])
 
 
+def shiin_predict_noML(landmark,mode):
+    midpoint = []
+    for i in range(5,16,4):
+        #中点(?)を計算
+        if mode == "2D":
+            midpoint.append([(landmark[i+2].x+landmark[i+3].x)/2,(landmark[i+2].y+landmark[i+3].y)/2])
+            midpoint.append([(landmark[i+1].x+landmark[i+2].x)/2,(landmark[i+1].y+landmark[i+2].y)/2])
+            midpoint.append([(landmark[i].x+landmark[i+1].x*2)/3,(landmark[i].y+landmark[i+1].y*2)/3])
+        elif mode == "3D":
+            midpoint.append([(landmark[i+2].x+landmark[i+3].x)/2,(landmark[i+2].y+landmark[i+3].y)/2,(landmark[i+2].z+landmark[i+3].z)/2])
+            midpoint.append([(landmark[i+1].x+landmark[i+2].x)/2,(landmark[i+1].y+landmark[i+2].y)/2,(landmark[i+1].z+landmark[i+2].z)/2])
+            midpoint.append([(landmark[i].x+landmark[i+1].x*2)/3,(landmark[i].y+landmark[i+1].y*2)/3,(landmark[i].z+landmark[i+1].z*2)/3])
+    if mode == "2D":
+        midpoint.append([(landmark[18].x+landmark[19].x)/2,(landmark[18].y+landmark[19].y)/2]) #わ
+        midpoint.append([(landmark[19].x+landmark[20].x)/2,(landmark[19].y+landmark[20].y)/2]) #小
+    elif mode == "3D":
+        midpoint.append([(landmark[18].x+landmark[19].x)/2,(landmark[18].y+landmark[19].y)/2,(landmark[18].z+landmark[19].z)/2])
+        midpoint.append([(landmark[19].x+landmark[20].x)/2,(landmark[19].y+landmark[20].y)/2,(landmark[19].z+landmark[20].z)/2])
+    #親指の先端の座標
+    thumb = [landmark[4].x,landmark[4].y,landmark[4].z]
+    #最も近い中点を探す
+    min_dist = 100000
+    min_index = 0
+    for i in range(len(midpoint)):
+        if mode == "3D":
+            dist = np.sqrt((thumb[0]-midpoint[i][0])**2+(thumb[1]-midpoint[i][1])**2+(thumb[2]-midpoint[i][2])**2)
+        elif mode == "2D":
+            dist = np.sqrt((thumb[0]-midpoint[i][0])**2+(thumb[1]-midpoint[i][1])**2)
+
+        if dist < min_dist:
+            min_dist = dist
+            min_index = i
+    return min_index
 
 
 def shiin_predict(model,landmark,mode):
@@ -87,22 +121,24 @@ def shiin_predict(model,landmark,mode):
                 cnt += 1   
     #4から各点までの変位を特徴量に追加
     hand_size = np.sqrt((landmark_dict['x0']-landmark_dict['x17'])**2+(landmark_dict['y0']-landmark_dict['y17'])**2)
-    for i in range(21,32):
+    for i in range(21,33):
         if mode == "2D":
             # 列を結合する
             landmark_dict = pd.concat([landmark_dict, pd.DataFrame({
                 'offset_x'+str(i): (landmark_dict['x4'] - landmark_dict['x'+str(i)]) / hand_size,
-                'offset_y'+str(i): (landmark_dict['y4'] - landmark_dict['y'+str(i)]) / hand_size
+                'offset_y'+str(i): (landmark_dict['y4'] - landmark_dict['y'+str(i)]) / hand_size,
+                'distance'+str(i): np.sqrt((landmark_dict['x4'] - landmark_dict['x'+str(i)])**2+(landmark_dict['y4'] - landmark_dict['y'+str(i)])**2)/ hand_size
             })], axis=1)
         elif mode == "3D":
             # 列を結合する
             landmark_dict = pd.concat([landmark_dict, pd.DataFrame({
                 'offset_x'+str(i): (landmark_dict['x4'] - landmark_dict['x'+str(i)])/ hand_size,
                 'offset_y'+str(i): (landmark_dict['y4'] - landmark_dict['y'+str(i)])/ hand_size,
-                'offset_z'+str(i): (landmark_dict['z4'] - landmark_dict['z'+str(i)])/ hand_size
+                'offset_z'+str(i): (landmark_dict['z4'] - landmark_dict['z'+str(i)])/ hand_size,
+                'distance'+str(i): np.sqrt((landmark_dict['x4'] - landmark_dict['x'+str(i)])**2+(landmark_dict['y4'] - landmark_dict['y'+str(i)])**2+(landmark_dict['z4'] - landmark_dict['z'+str(i)])**2)/ hand_size
             })], axis=1)
             #xn,ynを消去
-    for i in range(0,32):
+    for i in range(0,33):
         landmark_dict = landmark_dict.drop(['x'+str(i),'y'+str(i),'z'+str(i)],axis=1)
     #予測
     pred = model.predict(landmark_dict)
@@ -128,8 +164,9 @@ def mojitype_wrapper(args):
 #main
 if __name__ == "__main__":
     #モデルの読み込み
-    shiin_model = pickle.load(open('shiin/shiin_model_'+MODE+'.pkl', 'rb'))
-    boin_model = pickle.load(open('boin/boin_model_'+MODE+'.pkl', 'rb'))
+    if USE_ML:
+        shiin_model = pickle.load(open('shiin/shiin_model_'+MODE+'.pkl', 'rb'))
+        boin_model = pickle.load(open('boin/boin_model_'+MODE+'.pkl', 'rb'))
     #ターゲットの段の入力
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(
@@ -183,8 +220,11 @@ if __name__ == "__main__":
                 msg = row.decode('utf-8').rstrip()
                 if msg == "tap":
                     #母音を判定
-                    pred = shiin_predict(shiin_model,hand_landmarks.landmark,MODE)
-                    shiin = target_dict[pred[0]]
+                    if USE_ML:
+                        pred = shiin_predict(shiin_model,hand_landmarks.landmark,MODE)[0]
+                    else:
+                        pred = shiin_predict_noML(hand_landmarks.landmark,MODE)
+                    shiin = target_dict[pred]
                     #親指の押下時のx,y座標を格納
                     thumb_tap_org = [hand_landmarks.landmark[4].x,hand_landmarks.landmark[4].y]
                     #親指から最も近い点を探す
