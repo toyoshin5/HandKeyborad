@@ -26,8 +26,8 @@ tim = TextInputManager()
 MODE = "2D" #2D or 3D
 ARDUINO_PATH = "/dev/tty.usbmodem1301" #Arduinoのシリアルポート
 VIDEOCAPTURE_NUM = 0 #ビデオキャプチャの番号
-USE_ML = False #子音判定に機械学習を使うかどうか
-
+USE_ML_BOIN = False #母音判定に機械学習を使うかどうか
+USE_ML_SHIIN = True #子音判定に機械学習を使うかどうか
 target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"小"}
 rev_target_dict = {"あ":0,"か":1,"さ":2,"た":3,"な":4,"は":5,"ま":6,"や":7,"ら":8,"わ":9,"小":10}
 
@@ -164,8 +164,9 @@ def mojitype_wrapper(args):
 #main
 if __name__ == "__main__":
     #モデルの読み込み
-    if USE_ML:
+    if USE_ML_SHIIN:
         shiin_model = pickle.load(open('shiin/shiin_model_'+MODE+'.pkl', 'rb'))
+    if USE_ML_BOIN:
         boin_model = pickle.load(open('boin/boin_model_'+MODE+'.pkl', 'rb'))
     #ターゲットの段の入力
     mp_hands = mp.solutions.hands
@@ -219,8 +220,8 @@ if __name__ == "__main__":
                 row = ser.readline()
                 msg = row.decode('utf-8').rstrip()
                 if msg == "tap":
-                    #母音を判定
-                    if USE_ML:
+                    #子音を判定
+                    if USE_ML_SHIIN:
                         pred = shiin_predict(shiin_model,hand_landmarks.landmark,MODE)[0]
                     else:
                         pred = shiin_predict_noML(hand_landmarks.landmark,MODE)

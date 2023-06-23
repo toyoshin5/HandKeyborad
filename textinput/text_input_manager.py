@@ -8,7 +8,7 @@ class TextInputManager:
     df = None
     #コンストラクタ
     def __init__(self):
-        pyautogui.PAUSE = 0.001
+        pyautogui.PAUSE = 0.01
         #CSVファイルを読み込む
         self.df = pd.read_csv("textinput/dakuon_rule.csv",encoding="UTF-8", names=[0,1,2],header=None)
     
