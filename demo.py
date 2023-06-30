@@ -278,9 +278,10 @@ if __name__ == "__main__":
                         count = 5 #入力表示用
                     is_tap = False
             if count > 0:
-                image = showHiragana(hiragana, shiin ,image, 200,hand_landmarks.landmark,resolution)
+                if hiragana != "*":
+                    image = showHiragana(hiragana, shiin ,image, 200,hand_landmarks.landmark,resolution)
             if is_tap:
-                image = showHiragana(shiin, shiin ,image, 70,hand_landmarks.landmark,resolution)
+                    image = showHiragana(shiin, shiin ,image, 70,hand_landmarks.landmark,resolution)
         else:
             if ser.in_waiting > 0:
                 ser.readline()#空読み

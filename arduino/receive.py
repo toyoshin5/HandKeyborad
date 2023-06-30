@@ -3,7 +3,7 @@ import serial
 import matplotlib.pyplot as plt
 #シリアル通信でデータを受信する
 if __name__ == '__main__':
-    ser = serial.Serial('/dev/tty.usbmodem11301', 9600)
+    ser = serial.Serial('/dev/tty.usbmodem1101', 9600)
     data = []
     th = 900
     while True:
@@ -16,10 +16,11 @@ if __name__ == '__main__':
                 data.append(int(text))
             except ValueError:
                 continue
-            plt.ylim(0, 1023)
+            maxim = max(data)
+            plt.ylim(0, maxim+100)
             color = "green" if int(text) <= th else "red"
             plt.plot(data, color=color)
-            plt.pause(0.01)
+            plt.pause(0.005)
             if len(data) > 100:
                 data.pop(0)
                 plt.clf()
