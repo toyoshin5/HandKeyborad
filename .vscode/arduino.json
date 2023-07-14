@@ -1,3 +1,5 @@
 {
-    "port": "/dev/tty.usbmodem1301"
+    "port": "/dev/tty.usbmodem1101",
+    "board": "arduino:avr:uno",
+    "sketch": "arduino/cap_sencing/cap_sencing.ino"
 }

@@ -24,10 +24,10 @@ im = HiraganaImgManager()
 tim = TextInputManager()
 
 MODE = "2D" #2D or 3D
-ARDUINO_PATH = "/dev/tty.usbmodem1301" #Arduinoのシリアルポート
+ARDUINO_PATH = "/dev/tty.usbmodem1201" #Arduinoのシリアルポート
 VIDEOCAPTURE_NUM = 0 #ビデオキャプチャの番号
 USE_ML_BOIN = False #母音判定に機械学習を使うかどうか
-USE_ML_SHIIN = True #子音判定に機械学習を使うかどうか
+USE_ML_SHIIN = False #子音判定に機械学習を使うかどうか
 target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"小"}
 rev_target_dict = {"あ":0,"か":1,"さ":2,"た":3,"な":4,"は":5,"ま":6,"や":7,"ら":8,"わ":9,"小":10}
 
