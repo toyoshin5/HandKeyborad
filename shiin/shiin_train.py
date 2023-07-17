@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
 
-mode = "2D" #2D or 3D
+mode = "3D" #2D or 3D
 
 target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"わ",10:"小"}
 rev_target_dict = {"あ":0,"か":1,"さ":2,"た":3,"な":4,"は":5,"ま":6,"や":7,"ら":8,"わ":9,"小":10}
@@ -19,7 +19,7 @@ def rotate_coordinates(rotation_matrix, coordinates):
     return np.array(rotated_coordinates[0]), np.array(rotated_coordinates[1])
 
 #csvを読み込み
-df = pd.read_csv('hand_landmark_10000.csv')
+df = pd.read_csv('corrected_hand_landmark.csv')
 df = df.dropna()
 df = df.reset_index(drop=True)
 
@@ -30,10 +30,11 @@ y = df['target']
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
 #前処理
-#xnを全て反転
-for i in range(21):
-    X_train['x'+str(i)] = X_train['x'+str(i)]*-1
-    X_test['x'+str(i)] = X_test['x'+str(i)]*-1
+#xnを全て反転 元の画像が反転している場合に必要
+# for i in range(21):
+#     X_train['x'+str(i)] = X_train['x'+str(i)]*-1
+#     X_test['x'+str(i)] = X_test['x'+str(i)]*-1
+
 #4から各点まで変位を計算
 # hand_size_train = np.sqrt((X_train['x0']-X_train['x17'])**2+(X_train['y0']-X_train['y17'])**2)
 # hand_size_test = np.sqrt((X_test['x0']-X_test['x17'])**2+(X_test['y0']-X_test['y17'])**2)

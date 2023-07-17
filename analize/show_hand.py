@@ -5,7 +5,16 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 
 
-def rotate_points(coords, a, b, c):
+def rotate_points_yaw_pitch(coords):
+    #  指の平面を求める
+    #5~20の点
+    finger_coords = coords[5:21]
+    # 最小二乗法による平面の方程式の解を求める
+    A = np.column_stack((finger_coords[:, 0], finger_coords[:, 1], np.ones(len(finger_coords))))
+    b = finger_coords[:, 2]
+    coefficients, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
+    # 平面の方程式の係数を取得
+    a, b ,_= coefficients
     # 平面の法線ベクトルを計算
     normal_vector = np.array([a, b, -1])
     # 法線ベクトルを正規化
@@ -64,29 +73,47 @@ def convert_to_2D_coordinates(point_cloud, reference_point):
 
     return coordinates_2D
 
-hand_xyz = [0.25097590684890747,0.5334060192108154,8.100722084236622e-07,0.3147541880607605,0.4432395398616791,-0.045924510806798935,0.3902142345905304,0.41922932863235474,-0.04368078336119652,0.4540112018585205,0.4661737382411957,-0.03488130494952202,0.5065555572509766,0.5015403032302856,-0.022376637905836105,0.4029878079891205,0.31191691756248474,0.05077483132481575,0.46953722834587097,0.31213122606277466,0.06228572502732277,0.5165619254112244,0.3374391198158264,0.04978443682193756,0.553362250328064,0.3620351254940033,0.035664476454257965,0.4118056893348694,0.3891797959804535,0.07224249839782715,0.47505897283554077,0.3865611255168915,0.08119460195302963,0.5188854932785034,0.40912261605262756,0.05049758031964302,0.5566449165344238,0.4322740435600281,0.023196078836917877,0.4110196530818939,0.45749178528785706,0.08450748771429062,0.47148311138153076,0.4544259309768677,0.08428109437227249,0.5094884634017944,0.4655401110649109,0.05156936123967171,0.5367550849914551,0.48965543508529663,0.025749219581484795,0.40818238258361816,0.5333566665649414,0.09198743104934692,0.46025222539901733,0.5201414227485657,0.08783706277608871,0.4906270205974579,0.5204014778137207,0.06943982094526291,0.5180841684341431,0.524652898311615,0.053049106150865555]
+def showPlot(x_coords, y_coords, z_coords):
+    bones = [(0, 1), (1, 2), (2, 3), (3, 4), (0, 5), (5, 6), (6, 7), (7, 8), (5, 9), (9, 10), (10, 11), (11, 12), (17, 13),(9,13), (13, 14), (14, 15), (15, 16), (0, 17), (17, 18), (18, 19), (19, 20)]
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    ax.scatter(x_coords, y_coords, z_coords)
+
+    for bone in bones:
+        x_start = x_coords[bone[0]]
+        y_start = y_coords[bone[0]]
+        z_start = z_coords[bone[0]]
+        x_end = x_coords[bone[1]]
+        y_end = y_coords[bone[1]]
+        z_end = z_coords[bone[1]]
+        ax.plot([x_start, x_end], [y_start, y_end], [z_start, z_end], 'b')
+        
+    # スケールの調整
+    max_range = max(max(x_coords) - min(x_coords), max(y_coords) - min(y_coords), max(z_coords) - min(z_coords))
+    mid_x = (max(x_coords) + min(x_coords)) * 0.5
+    mid_y = (max(y_coords) + min(y_coords)) * 0.5
+    mid_z = (max(z_coords) + min(z_coords)) * 0.5
+    ax.set_xlim(mid_x - max_range * 0.5, mid_x + max_range * 0.5)
+    ax.set_ylim(mid_y - max_range * 0.5, mid_y + max_range * 0.5)
+    ax.set_zlim(mid_z - max_range * 0.5, mid_z + max_range * 0.5)
+    ax.set_box_aspect([1, 1, 1])  # X, Y, Zのスケールを同じにする
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    plt.show()
+
+
+
+hand_xyz = [0.6918866151413895,0.5818294198624415,-0.09155796260506703,0.5941487944784334,0.4424916579625764,-0.1267355059556998,0.4834969672563541,0.3916900057758885,-0.10825522713068293,0.39331058289084836,0.4134639421429627,-0.0891436840881185,0.3142617922355008,0.4416772431230577,-0.06939599399030888,0.4642377240985375,0.37273820809129127,0.02287373237540093,0.3826636191832992,0.35892582154378105,0.053187819802751016,0.3288543788505156,0.3690536398899355,0.05031128042630939,0.2775763197073548,0.3760753825378812,0.04244093381060858,0.4754557889038784,0.46671000885906777,0.038868294506647624,0.39740082647663844,0.45403106246328007,0.06825489384026326,0.3390711948209472,0.4618770842333937,0.046514412906728045,0.2886661822283701,0.4728573263484382,0.025145158043845758,0.49303488282977725,0.5456296174802497,0.040445230317720064,0.41662026580065625,0.5453425969001566,0.06242667691267701,0.36030573672580385,0.5457073216197145,0.04487364442673846,0.3168724682255091,0.5523278632444167,0.02666924681459905,0.5143550550406885,0.6384157083820254,0.035054348385980066,0.44686804794880264,0.6233780283741073,0.05115541243037706,0.3976198478131851,0.6219205328960595,0.048257209547341605,0.350278735820999,0.6222329706818981,0.04192526860139927]
 x_coords = hand_xyz[::3]
 y_coords = hand_xyz[1::3]
 z_coords = hand_xyz[2::3]
 
 #xを反転    
-x_coords = [-x for x in x_coords]
-
-
-#===================================================================================================
-#  指の平面を求める
-#5~20の点
-finger_coords = np.array([[x_coords[i], y_coords[i], z_coords[i]] for i in range(5, 21)])
-# 最小二乗法による平面の方程式の解を求める
-A = np.column_stack((finger_coords[:, 0], finger_coords[:, 1], np.ones(len(finger_coords))))
-b = finger_coords[:, 2]
-coefficients, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
-# 平面の方程式の係数を取得
-a, b, c = coefficients
-
-# 平面の方程式を表示
-print(f"平面の方程式: {a:.3f}x + {b:.3f}y + {c:.3f} = z")
-
+#x_coords = [1-x for x in x_coords] #反転している場合は必要
 
 #===================================================================================================
 # #垂線
@@ -103,63 +130,16 @@ print(f"平面の方程式: {a:.3f}x + {b:.3f}y + {c:.3f} = z")
 #     if x == x_coords[4]:
 #         ax.scatter(intersection[0], intersection[1], intersection[2], color='r', s=10)
 #===================================================================================================
+#プロット1
+showPlot(x_coords, y_coords, z_coords)
+#===================================================================================================
 #z = 0の平面に変換
-res = rotate_points(np.array([x_coords, y_coords, z_coords]).T, a,b,c)
+res = rotate_points_yaw_pitch(np.array([x_coords, y_coords, z_coords]).T)
 res = rotate_points_roll(res)
 x_coords, y_coords, z_coords = res.T
 
 #===================================================================================================
-#プロット
-bones = [(0, 1), (1, 2), (2, 3), (3, 4), (0, 5), (5, 6), (6, 7), (7, 8), (5, 9), (9, 10), (10, 11), (11, 12), (17, 13),(9,13), (13, 14), (14, 15), (15, 16), (0, 17), (17, 18), (18, 19), (19, 20)]
-
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-
-ax.scatter(x_coords, y_coords, z_coords)
-
-for bone in bones:
-    x_start = x_coords[bone[0]]
-    y_start = y_coords[bone[0]]
-    z_start = z_coords[bone[0]]
-    x_end = x_coords[bone[1]]
-    y_end = y_coords[bone[1]]
-    z_end = z_coords[bone[1]]
-    ax.plot([x_start, x_end], [y_start, y_end], [z_start, z_end], 'b')
-
-# 平面を描画
-# x = np.linspace(min(x_coords), max(x_coords), 10)
-# y = np.linspace(min(y_coords), max(y_coords), 10)
-# X, Y = np.meshgrid(x, y)
-# Z = a * X + b * Y + c
-#ax.plot_wireframe(X, Y, Z, color='r',linewidth=0.1)
-
-# スケールの調整
-max_range = max(max(x_coords) - min(x_coords), max(y_coords) - min(y_coords), max(z_coords) - min(z_coords))
-mid_x = (max(x_coords) + min(x_coords)) * 0.5
-mid_y = (max(y_coords) + min(y_coords)) * 0.5
-mid_z = (max(z_coords) + min(z_coords)) * 0.5
-ax.set_xlim(mid_x - max_range * 0.5, mid_x + max_range * 0.5)
-ax.set_ylim(mid_y - max_range * 0.5, mid_y + max_range * 0.5)
-ax.set_zlim(mid_z - max_range * 0.5, mid_z + max_range * 0.5)
-ax.set_box_aspect([1, 1, 1])  # X, Y, Zのスケールを同じにする
-
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
-ax.set_zlabel('Z')
-
-
-
-plt.show()
-
-
-
-# # 平面に変換
-# twod_coords = convert_to_2D_coordinates(projaction_coords, projaction_coords[0])
-# # 二次元座標を描画
-# plt.scatter([x for x, y in twod_coords], [y for x, y in twod_coords])
-# plt.gca().invert_yaxis()
-# plt.gca().set_aspect('equal', adjustable='box')
-# plt.show()
-
+#プロット2
+showPlot(x_coords, y_coords, z_coords)
 
 
