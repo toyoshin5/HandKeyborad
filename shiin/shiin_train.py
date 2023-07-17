@@ -19,7 +19,7 @@ def rotate_coordinates(rotation_matrix, coordinates):
     return np.array(rotated_coordinates[0]), np.array(rotated_coordinates[1])
 
 #csvを読み込み
-df = pd.read_csv('hand_landmark.csv')
+df = pd.read_csv('hand_landmark_10000.csv')
 df = df.dropna()
 df = df.reset_index(drop=True)
 
@@ -68,8 +68,20 @@ if mode == "2D":
 #4から各点までの変位と距離を計算
 hand_size_train = np.sqrt((X_train['x17']-X_train['x0'])**2+(X_train['y17']-X_train['y0'])**2)
 hand_size_test = np.sqrt((X_test['x17']-X_test['x0'])**2+(X_test['y17']-X_test['y0'])**2)
-for i in range(21,33):
-    if mode == "3D":
+if mode == "2D":
+    for i in range(21,33):
+        X_train['offset_x'+str(i)] = (X_train['x4']-X_train['x'+str(i)])/hand_size_train
+        X_train['offset_y'+str(i)] = (X_train['y4']-X_train['y'+str(i)])/hand_size_train
+        X_test['offset_x'+str(i)] = (X_test['x4']-X_test['x'+str(i)])/hand_size_test
+        X_test['offset_y'+str(i)] = (X_test['y4']-X_test['y'+str(i)])/hand_size_test
+        X_train['distance'+str(i)] = np.sqrt((X_train['x4']-X_train['x'+str(i)])**2+(X_train['y4']-X_train['y'+str(i)])**2)/hand_size_train
+        X_test['distance'+str(i)] = np.sqrt((X_test['x4']-X_test['x'+str(i)])**2+(X_test['y4']-X_test['y'+str(i)])**2)/hand_size_test
+    #xn,ynを消去
+    for i in range(0,33):
+        X_train = X_train.drop(['x'+str(i),'y'+str(i),'z'+str(i)],axis=1)
+        X_test = X_test.drop(['x'+str(i),'y'+str(i),'z'+str(i)],axis=1)
+if mode == "3D":
+    for i in range(5,21):
         X_train['offset_x'+str(i)] = (X_train['x4']-X_train['x'+str(i)])/hand_size_train
         X_train['offset_y'+str(i)] = (X_train['y4']-X_train['y'+str(i)])/hand_size_train
         X_train['offset_z'+str(i)] = (X_train['z4']-X_train['z'+str(i)])/hand_size_train
@@ -78,18 +90,11 @@ for i in range(21,33):
         X_test['offset_z'+str(i)] = (X_test['z4']-X_test['z'+str(i)])/hand_size_test
         X_train['distance'+str(i)] = np.sqrt((X_train['x4']-X_train['x'+str(i)])**2+(X_train['y4']-X_train['y'+str(i)])**2+(X_train['z4']-X_train['z'+str(i)])**2)
         X_test['distance'+str(i)] = np.sqrt((X_test['x4']-X_test['x'+str(i)])**2+(X_test['y4']-X_test['y'+str(i)])**2+(X_test['z4']-X_test['z'+str(i)])**2)
-    elif mode == "2D":
-        X_train['offset_x'+str(i)] = (X_train['x4']-X_train['x'+str(i)])/hand_size_train
-        X_train['offset_y'+str(i)] = (X_train['y4']-X_train['y'+str(i)])/hand_size_train
-        X_test['offset_x'+str(i)] = (X_test['x4']-X_test['x'+str(i)])/hand_size_test
-        X_test['offset_y'+str(i)] = (X_test['y4']-X_test['y'+str(i)])/hand_size_test
-        X_train['distance'+str(i)] = np.sqrt((X_train['x4']-X_train['x'+str(i)])**2+(X_train['y4']-X_train['y'+str(i)])**2)/hand_size_train
-        X_test['distance'+str(i)] = np.sqrt((X_test['x4']-X_test['x'+str(i)])**2+(X_test['y4']-X_test['y'+str(i)])**2)/hand_size_test
+    #xn,ynを消去
+    for i in range(0,21):
+        X_train = X_train.drop(['x'+str(i),'y'+str(i),'z'+str(i)],axis=1)
+        X_test = X_test.drop(['x'+str(i),'y'+str(i),'z'+str(i)],axis=1)
 
-#xn,ynを消去
-for i in range(0,33):
-    X_train = X_train.drop(['x'+str(i),'y'+str(i),'z'+str(i)],axis=1)
-    X_test = X_test.drop(['x'+str(i),'y'+str(i),'z'+str(i)],axis=1)
 
 model = XGBClassifier(early_stopping_rounds=10)
 #ログを100回ごとに出力
