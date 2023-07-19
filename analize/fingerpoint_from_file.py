@@ -5,7 +5,39 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import pandas as pd
+def in_rect(rect,target,i,j):
+    a = (rect[0][0], rect[0][1])
+    b = (rect[1][0], rect[1][1])
+    c = (rect[2][0], rect[2][1])
+    d = (rect[3][0], rect[3][1])
+    e = (target[0], target[1])
 
+    # 原点から点へのベクトルを求める
+    vector_a = np.array(a)
+    vector_b = np.array(b)
+    vector_c = np.array(c)
+    vector_d = np.array(d)
+    vector_e = np.array(e)
+
+    # 点から点へのベクトルを求める
+    vector_ab = vector_b - vector_a
+    vector_ae = vector_e - vector_a
+    vector_bc = vector_c - vector_b
+    vector_be = vector_e - vector_b
+    vector_cd = vector_d - vector_c
+    vector_ce = vector_e - vector_c
+    vector_da = vector_a - vector_d
+    vector_de = vector_e - vector_d
+
+    # 外積を求める
+    vector_cross_ab_ae = np.cross(vector_ab, vector_ae)
+    vector_cross_bc_be = np.cross(vector_bc, vector_be)
+    vector_cross_cd_ce = np.cross(vector_cd, vector_ce)
+    vector_cross_da_de = np.cross(vector_da, vector_de)
+
+    #普通であれば、全てマイナスであれば、点は四角形の内側にある
+    #端っこの四角形の場合は、その方向であればはみ出てもいいということにする
+    return (i == 0 or vector_cross_ab_ae < 0) and (j+1 == 3 or vector_cross_bc_be < 0) and (i+1 == 3 or vector_cross_cd_ce < 0) and (j == 0 or vector_cross_da_de < 0)
 def calc_regression_plane(coords):
     # 最小二乗法による平面の方程式の解を求める
     A = np.column_stack((coords[:, 0], coords[:, 1], np.ones(len(coords))))
@@ -131,19 +163,50 @@ def find_homography(src, dst):
     return X.tolist()
 
 
+
+USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY = True
+
 #main
 if __name__ == '__main__':
     #ファイル名を取得
-    file_name = "../shiin/hand_landmark_10000.csv"
+    file_name = "../shiin/hand_landmark.csv"
+    ave_x_coords = []
+    ave_y_coords = []
+    if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
+        df = pd.read_csv(file_name)
+        df = df.dropna()
+        #1列目はラベルなので削除
+        df = df.drop(df.columns[[0]], axis=1)
+        df = df.reset_index(drop=True)
+        df = df.astype(float)
+        #各列の平均をとる
+        average_of_hand = df.mean()
+        #平均をリストに変換
+        average_of_hand = average_of_hand.values.tolist()
+        x_coords = average_of_hand[::3]
+        y_coords = average_of_hand[1::3]    
+        z_coords = average_of_hand[2::3]
+        #z = 0の平面に変換
+        #xを反転    
+        x_coords = [1-x for x in x_coords] #反転している場合は必要
+        res = rotate_points_yaw_pitch(np.array([x_coords, y_coords, z_coords]).T)
+        res = rotate_points_roll(res)
+        ave_x_coords, ave_y_coords, _ = res.T
+
+    
     #ファイルを1行ずつ読み込む
     with open(file_name, mode='r') as f:
         lines = f.readlines()
+    
+    
     #各行を読み込んで、座標を取得
-    for k in range(0,len(lines),100):
+    X = [[] for i in range(11)]#11
+    Y = [[] for i in range(11)]#11
+    for k in range(0,len(lines),20):
         #最初の行は飛ばす
         if lines[k][0] == 't':
             continue
-        print(k)
+        print("\r"+str(k),end="")
         lines[k] = lines[k].rstrip('\n')
         lines[k] = lines[k].split(',')
         label = int(lines[k][0])
@@ -172,39 +235,51 @@ if __name__ == '__main__':
                 # 16 15 14 13
                 # 20 19 18 17
                 index = 8+j*4-i
-                src = [[x_coords[index], y_coords[index]], [x_coords[index-1], y_coords[index-1]], [x_coords[index+4], y_coords[index+4]], [x_coords[index+3], y_coords[index+3]]]
+                rect = [[x_coords[index], y_coords[index]], [x_coords[index+4], y_coords[index+4]], [x_coords[index+3], y_coords[index+3]],[x_coords[index-1], y_coords[index-1]]]
                 # 0 1 2 3
                 # 1
                 # 2
                 # 3
-                dst = [ [i, j], [i+1, j], [i ,j+1], [i+1, j+1] ]
-                X = find_homography(src, dst)
-                xc = []
-                yc = []
-                #変換後の座標を計算
-                src = np.array([x_coords[4], y_coords[4], 1])
-                dst = np.dot(X, src)
-                new_x_coords = dst[0]/dst[2]
-                new_y_coords = dst[1]/dst[2]
-                #枠内かチェック
-                flg = (i == 0 or i <= new_x_coords) and (i+1 == 3 or new_x_coords <= i+1) and (j == 0 or j <= new_y_coords) and (j+1 == 3 or new_y_coords <= j+1)
-                #print(new_x_coords, new_y_coords,flg,i,j,index)
-                if flg:
-                    x = new_x_coords
-                    y = new_y_coords
-                    cnt+=1
-        if cnt == 1:
-            #プロット。labelの値によって色を変える
-            cm = plt.get_cmap("Spectral")
-            plt.scatter(x, y, color=cm(label/10), s=10)
 
+                if in_rect(rect, [x_coords[4],y_coords[4]],i,j):
+                    if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
+                        dst = [[ave_x_coords[index], ave_y_coords[index]], [ave_x_coords[index+4], ave_y_coords[index+4]], [ave_x_coords[index+3], ave_y_coords[index+3]],[ave_x_coords[index-1], ave_y_coords[index-1]]]
+                    else:
+                        dst = [ [i, j], [i ,j+1], [i+1, j+1] ,[i+1, j]]
+                    A = find_homography(rect, dst)
+                    xc = []
+                    yc = []
+                    #変換後の座標を計算
+                    src = np.array([x_coords[4], y_coords[4], 1])
+                    dst = np.dot(A, src)
+                    new_x_coords = dst[0]/dst[2]
+                    new_y_coords = dst[1]/dst[2]
+                    #プロット。labelの値によって色を変える
+                    X[label].append(new_x_coords)
+                    Y[label].append(new_y_coords)
+                    
 
-    x_coords = [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3]
-    y_coords = [0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3]
-    plt.scatter(x_coords, y_coords, c = 'b')
-    
-    plt.xlim(-1, 4)
-    plt.ylim(-1, 4)
+    #===================================================================================================
+    if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
+        #指の骨の組み合わせ
+        finger_bones = [(7,8),(6,7),(5,6),(11,12),(10,11),(9,10),(15,16),(14,15),(13,14),(19,20),(18,19),(17,18),(5,9),(9,13),(13,17)]
+        for i,j in finger_bones:
+            plt.plot([ave_x_coords[i], ave_x_coords[j]], [ave_y_coords[i], ave_y_coords[j]], c = 'b',linewidth=1)
+
+    cm = plt.get_cmap("Spectral")
+    #plot
+    for i in range(0,11):
+        plt.scatter(X[i], Y[i], c = cm(i/10),s = 5)
+
+    #目盛り
+    if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
+        plt.scatter(ave_x_coords[5:], ave_y_coords[5:], c = 'b',s=10)
+    else:
+        x_coords = [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3]
+        y_coords = [0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3]
+        plt.scatter(x_coords, y_coords, c = 'b')
+        plt.xlim(-1,4)
+        plt.ylim(-1,4)
 
     #y軸は下向きに正
     plt.gca().invert_yaxis()
