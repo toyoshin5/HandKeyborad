@@ -1,20 +1,25 @@
 
 
+import sys
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 
+def calc_regression_plane(coords):
+    # 最小二乗法による平面の方程式の解を求める
+    A = np.column_stack((coords[:, 0], coords[:, 1], np.ones(len(coords))))
+    b = coords[:, 2]
+    coefficients, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
+    # 平面の方程式の係数を取得
+    a, b ,c = coefficients
+    return a, b, c
 
 def rotate_points_yaw_pitch(coords):
     #  指の平面を求める
     #5~20の点
     finger_coords = coords[5:21]
     # 最小二乗法による平面の方程式の解を求める
-    A = np.column_stack((finger_coords[:, 0], finger_coords[:, 1], np.ones(len(finger_coords))))
-    b = finger_coords[:, 2]
-    coefficients, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
-    # 平面の方程式の係数を取得
-    a, b ,_= coefficients
+    a,b,_ = calc_regression_plane(finger_coords)
     # 平面の法線ベクトルを計算
     normal_vector = np.array([a, b, -1])
     # 法線ベクトルを正規化
@@ -58,22 +63,36 @@ def rotate_points_roll(coords):
     # 座標の回転
     rotated_coords = np.dot(rotation_matrix_roll, coords.T).T
     return rotated_coords
-def convert_to_2D_coordinates(point_cloud, reference_point):
-
-    # 基準点の座標
-    x_ref, y_ref, _ = reference_point
-
-    # 点群を二次元座標に変換
-    coordinates_2D = []
-    for point in point_cloud:
-        x, y, _ = point
-        x_2D = x - x_ref
-        y_2D = y - y_ref
-        coordinates_2D.append((x_2D, y_2D))
-
-    return coordinates_2D
-
+#指の腹の位置を推定する関数xz平面で三角形を作るイメージ
+def calc_finger_surface(coords):
+    #指の骨の組み合わせ
+    finger_bones = [(7,8),(6,7),(5,6),(11,12),(10,11),(9,10),(15,16),(14,15),(13,14),(19,20),(18,19)]
+    finger_surface = np.empty((0,3), float)
+    for bone in finger_bones:
+        x1, y1, z1 = coords[bone[0]]
+        x2, y2, z2 = coords[bone[1]]
+        #中点を求める
+        x = (x1 + x2) / 2
+        y = (y1 + y2) / 2
+        z = (z1 + z2) / 2
+        xz_dist = np.sqrt((x1-x2)**2 + (z1-z2)**2)
+        #中点から指の腹の位置までの距離
+        #日本人男性の中指の内径は約13号で約53mm
+        #半径は約53/2/2/np.sqrt(3) = 9.2mm
+        #中指の背側長は25mm(とする)
+        #10と11の距離
+        bone_length = np.sqrt((coords[10][0]-coords[11][0])**2 + (coords[10][1]-coords[11][1])**2 + (coords[10][2]-coords[11][2])**2)
+        #指の半径を求める
+        radius = bone_length * 9.2 / 25
+        #指の腹の位置を求める。y座標はそのままで、x,z座標は中点からの距離をradiusにする
+        newx = x + radius * (z1-z2) / xz_dist
+        newz = z - radius * (x1-x2) / xz_dist
+        finger_surface = np.append(finger_surface, np.array([[newx, y, newz]]), axis=0)
+    return finger_surface
+        
+#3次元座標をプロットする関数
 def showPlot(x_coords, y_coords, z_coords):
+
     bones = [(0, 1), (1, 2), (2, 3), (3, 4), (0, 5), (5, 6), (6, 7), (7, 8), (5, 9), (9, 10), (10, 11), (11, 12), (17, 13),(9,13), (13, 14), (14, 15), (15, 16), (0, 17), (17, 18), (18, 19), (19, 20)]
 
     fig = plt.figure()
@@ -90,6 +109,10 @@ def showPlot(x_coords, y_coords, z_coords):
         z_end = z_coords[bone[1]]
         ax.plot([x_start, x_end], [y_start, y_end], [z_start, z_end], 'b')
         
+    #指の腹の位置を推定
+    finger_surface = calc_finger_surface(np.array([x_coords, y_coords, z_coords]).T).T
+    ax.scatter(finger_surface[0], finger_surface[1], finger_surface[2], c='r')
+
     # スケールの調整
     max_range = max(max(x_coords) - min(x_coords), max(y_coords) - min(y_coords), max(z_coords) - min(z_coords))
     mid_x = (max(x_coords) + min(x_coords)) * 0.5
@@ -105,19 +128,113 @@ def showPlot(x_coords, y_coords, z_coords):
     ax.set_zlabel('Z')
     plt.show()
 
+#二次元座標のプロット。先頭の要素は赤になる。y軸は下向きに正。
+def showPlot2D(x_coords, y_coords):
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
 
+    ax.scatter(x_coords[1:], y_coords[1:])
+    ax.scatter(x_coords[0], y_coords[0], c='r')
 
-hand_xyz = [0.6918866151413895,0.5818294198624415,-0.09155796260506703,0.5941487944784334,0.4424916579625764,-0.1267355059556998,0.4834969672563541,0.3916900057758885,-0.10825522713068293,0.39331058289084836,0.4134639421429627,-0.0891436840881185,0.3142617922355008,0.4416772431230577,-0.06939599399030888,0.4642377240985375,0.37273820809129127,0.02287373237540093,0.3826636191832992,0.35892582154378105,0.053187819802751016,0.3288543788505156,0.3690536398899355,0.05031128042630939,0.2775763197073548,0.3760753825378812,0.04244093381060858,0.4754557889038784,0.46671000885906777,0.038868294506647624,0.39740082647663844,0.45403106246328007,0.06825489384026326,0.3390711948209472,0.4618770842333937,0.046514412906728045,0.2886661822283701,0.4728573263484382,0.025145158043845758,0.49303488282977725,0.5456296174802497,0.040445230317720064,0.41662026580065625,0.5453425969001566,0.06242667691267701,0.36030573672580385,0.5457073216197145,0.04487364442673846,0.3168724682255091,0.5523278632444167,0.02666924681459905,0.5143550550406885,0.6384157083820254,0.035054348385980066,0.44686804794880264,0.6233780283741073,0.05115541243037706,0.3976198478131851,0.6219205328960595,0.048257209547341605,0.350278735820999,0.6222329706818981,0.04192526860139927]
+    # スケールの調整
+    max_range = max(max(x_coords) - min(x_coords), max(y_coords) - min(y_coords))
+    mid_x = (max(x_coords) + min(x_coords)) * 0.5
+    mid_y = (max(y_coords) + min(y_coords)) * 0.5
+    ax.set_xlim(mid_x - max_range * 0.5, mid_x + max_range * 0.5)
+    ax.set_ylim(mid_y - max_range * 0.5, mid_y + max_range * 0.5)
+
+    #y軸は下向きに正
+    ax.invert_yaxis()
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    plt.show()
+
+def showPlotProjected(x,y):
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.scatter(x, y,c = 'r')
+    #000111222
+    x_coords = [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3]
+    y_coords = [0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3]
+    ax.scatter(x_coords, y_coords, c = 'b')
+    
+     # スケールの調整
+    max_range = max(max(x_coords) - min(x_coords), max(y_coords) - min(y_coords))
+    mid_x = (max(x_coords) + min(x_coords)) * 0.5
+    mid_y = (max(y_coords) + min(y_coords)) * 0.5
+    ax.set_xlim(mid_x - max_range * 0.5, mid_x + max_range * 0.5)
+    ax.set_ylim(mid_y - max_range * 0.5, mid_y + max_range * 0.5)
+
+    #y軸は下向きに正
+    ax.invert_yaxis()
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    plt.show()
+
+#4つの点から射影変換行列を求める関数
+def find_homography(src, dst):
+    
+    # X = (x*h0 +y*h1 + h2) / (x*h6 + y*h7 + 1)
+    # Y = (x*h3 +y*h4 + h5) / (x*h6 + y*h7 + 1)
+    #
+    # X = (x*h0 +y*h1 + h2) - x*h6*X - y*h7*X
+    # Y = (x*h3 +y*h4 + h5) - x*h6*Y - y*h7*Y
+    
+    x1, y1 = src[0]
+    x2, y2 = src[1]
+    x3, y3 = src[2]
+    x4, y4 = src[3]
+    
+    u1, v1 = dst[0]
+    u2, v2 = dst[1]
+    u3, v3 = dst[2]
+    u4, v4 = dst[3]
+    
+    A = np.matrix([
+            [ x1, y1, 1, 0, 0, 0, -x1*u1, -y1*u1, 0 ],
+            [ 0, 0, 0, x1, y1, 1, -x1*v1, -y1*v1, 0 ],
+            [ x2, y2, 1, 0, 0, 0, -x2*u2, -y2*u2, 0 ],
+            [ 0, 0, 0, x2, y2, 1, -x2*v2, -y2*v2, 0 ],
+            [ x3, y3, 1, 0, 0, 0, -x3*u3, -y3*u3, 0 ],
+            [ 0, 0, 0, x3, y3, 1, -x3*v3, -y3*v3, 0 ],
+            [ x4, y4, 1, 0, 0, 0, -x4*u4, -y4*u4, 0 ],
+            [ 0, 0, 0, x4, y4, 1, -x4*v4, -y4*v4, 0 ],
+            [ 0, 0, 0,  0,  0, 0,      0,      0, 1 ],
+            ])
+    B = np.matrix([
+            [ u1 ],
+            [ v1 ],
+            [ u2 ],
+            [ v2 ],
+            [ u3 ],
+            [ v3 ],
+            [ u4 ],
+            [ v4 ],
+            [ 1  ],
+            ])
+    
+    X = A.I * B
+    X.shape = (3, 3)
+    return X.tolist()
+
+#コマンドライン引数から文字列を取得
+args = sys.argv[1]
+hand_xyz = args.split(',')
+hand_xyz = [float(x) for x in hand_xyz]
+#hand_xyz = [0.641210122715859,0.4942765495288447,-0.23567364552656675,0.5868175186311222,0.3737301356641019,-0.24718040866765723,0.5253038096767172,0.31928673104032695,-0.2196821981200324,0.4592711871353451,0.3357012442194339,-0.19526091098245565,0.40447369047143433,0.356856016416988,-0.17167317596842058,0.5626615798685981,0.2530466975737158,-0.11374038702920768,0.5058888996974564,0.23641682169536737,-0.08303260720104466,0.4529722801505953,0.25218537825736936,-0.08529380611106135,0.40821969787216295,0.27078003463179656,-0.09107028633468742,0.5473898833401906,0.3319933304730334,-0.10086231107310824,0.48783398562896724,0.31314116272587766,-0.0715815761227944,0.43426232937275855,0.3224863011242835,-0.09501912880438287,0.3863795563801131,0.3380758645680298,-0.11513945882590497,0.5383601516784311,0.4004798084544264,-0.0982852529088293,0.48382822434275413,0.3868312554041477,-0.07642901907185062,0.4367829764057085,0.38579410498853794,-0.09800306800437898,0.3974196545692311,0.40340173320582284,-0.11685502432187879,0.5294659874522152,0.4803075963310187,-0.1018767700990754,0.4820731602638567,0.4588675467849866,-0.08106228636247684,0.44543015207050296,0.4536956939976679,-0.08464828577426604,0.4100415506209963,0.4535698004265451,-0.08960989168260167]
+
 x_coords = hand_xyz[::3]
 y_coords = hand_xyz[1::3]
 z_coords = hand_xyz[2::3]
 
 #xを反転    
-#x_coords = [1-x for x in x_coords] #反転している場合は必要
+x_coords = [1-x for x in x_coords] #反転している場合は必要
+
 
 #===================================================================================================
 # #垂線
 # # 4~20
+# a,b,c = calc_regression_plane(np.array([x_coords, y_coords, z_coords]).T[5:21])
 # projaction_coords = []#4~20の垂線の足の座標を管理
 # for x,y,z in zip(x_coords[4:21],y_coords[4:21],z_coords[4:21]):
 #     # 平面の法線ベクトルを計算
@@ -142,4 +259,34 @@ x_coords, y_coords, z_coords = res.T
 #プロット2
 showPlot(x_coords, y_coords, z_coords)
 
+showPlot2D(x_coords[4:], y_coords[4:])
 
+#===================================================================================================
+
+for j in range(0,3):
+    for i in range(0,3):
+        # 8  7  6  5
+        # 12 11 10 9
+        # 16 15 14 13
+        # 20 19 18 17
+        index = 8+j*4-i
+        src = [[x_coords[index], y_coords[index]], [x_coords[index-1], y_coords[index-1]], [x_coords[index+4], y_coords[index+4]], [x_coords[index+3], y_coords[index+3]]]
+        # 0 1 2 3
+        # 1
+        # 2
+        # 3
+        dst = [ [i, j], [i+1, j], [i ,j+1], [i+1, j+1] ]
+        X = find_homography(src, dst)
+        xc = []
+        yc = []
+        #変換後の座標を計算
+        src = np.array([x_coords[4], y_coords[4], 1])
+        dst = np.dot(X, src)
+        new_x_coords = dst[0]/dst[2]
+        new_y_coords = dst[1]/dst[2]
+        #枠内かチェック
+        flg = (i == 0 or i <= new_x_coords) and (i+1 == 3 or new_x_coords <= i+1) and (j == 0 or j <= new_y_coords) and (j+1 == 3 or new_y_coords <= j+1)
+        print(new_x_coords, new_y_coords,flg,i,j,index)
+        if flg:
+            showPlotProjected(new_x_coords, new_y_coords)
+        
