@@ -20,7 +20,7 @@ target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8
 def rotate_coordinates(rotation_matrix, coordinates):
     rotated_coordinates = np.einsum('ijk,jk->ik', rotation_matrix, coordinates)
     return np.array(rotated_coordinates[0]), np.array(rotated_coordinates[1])
-
+#2D
 def shiin_predict_noML(landmark,mode):
     midpoint = []
     for i in range(5,16,4):

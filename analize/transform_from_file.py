@@ -5,6 +5,12 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import pandas as pd
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.datasets import load_breast_cancer
+
+LANDMARK_PATH = "../shiin/hand_landmark_10000.csv"
+
 def in_rect(rect,target,i,j):
     a = (rect[0][0], rect[0][1])
     b = (rect[1][0], rect[1][1])
@@ -169,7 +175,7 @@ USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY = True
 #main
 if __name__ == '__main__':
     #ファイル名を取得
-    file_name = "../shiin/hand_landmark.csv"
+    file_name = LANDMARK_PATH
     ave_x_coords = []
     ave_y_coords = []
     if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
@@ -202,7 +208,7 @@ if __name__ == '__main__':
     #各行を読み込んで、座標を取得
     X = [[] for i in range(11)]#11
     Y = [[] for i in range(11)]#11
-    for k in range(0,len(lines),20):
+    for k in range(0,len(lines),77):
         #最初の行は飛ばす
         if lines[k][0] == 't':
             continue
@@ -269,7 +275,7 @@ if __name__ == '__main__':
     cm = plt.get_cmap("Spectral")
     #plot
     for i in range(0,11):
-        plt.scatter(X[i], Y[i], c = cm(i/10),s = 5)
+        plt.scatter(X[i], Y[i], c = cm(i/12),s = 5)
 
     #目盛り
     if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
@@ -285,5 +291,52 @@ if __name__ == '__main__':
     plt.gca().invert_yaxis()
     plt.show()
 
+    #===================================================================================================
+    #kNN
+    k = 11
+    X_train = []
+    Y_train = []
+    for i in range(0,11):
+        for j in range(len(X[i])):
+            X_train.append([X[i][j],Y[i][j]])
+            Y_train.append(i)
+    clf = KNeighborsClassifier(n_neighbors=k)
+    clf.fit(X_train, Y_train)
+    # 結果を図示するコード
+    # 0.01刻みのグリッド生成
+    x_min = min([min(x) for x in X])
+    x_max = max([max(x) for x in X])
+    y_min = min([min(y) for y in Y])
+    y_max = max([max(y) for y in Y])
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.001), np.arange(y_min, y_max, 0.001))
+    # 予測
+    Z = clf.predict(np.c_[xx.ravel(), yy.ravel()])
+    # 結果を図示
+    Z = Z.reshape(xx.shape)
+    plt.contourf(xx, yy, Z ,20,cmap="jet",alpha=0.2)
+    for i in range(0,11):
+        plt.scatter(X[i], Y[i], c = cm(i/12),s = 5)
+    plt.gca().invert_yaxis()
+    plt.show()
+    #===================================================================================================
+    #kNNの交差検証
+    # データを訓練データとテストデータに分割
+    X_train, X_test, y_train, y_test = train_test_split(X_train, Y_train, random_state=0)
+    # 訓練データ、テストデータの精度を記録するための配列
+    training_accuracy = []
+    test_accuracy = []
+    # n_neighborsを1から11まで試す
+    neighbors_settings = range(1, 101,2)
+    for n_neighbors in neighbors_settings:
+        clf = KNeighborsClassifier(n_neighbors=n_neighbors).fit(X_train, y_train)
+        # 訓練データの精度を記録
+        training_accuracy.append(clf.score(X_train, y_train))
+        # テストデータの精度を記録
+        test_accuracy.append(clf.score(X_test, y_test))
 
-                
+    plt.plot(neighbors_settings, training_accuracy, label="training accuracy")
+    plt.plot(neighbors_settings, test_accuracy, label="test accuracy")
+    plt.ylabel("Accuracy")
+    plt.xlabel("n_neighbors")
+    plt.legend()
+    plt.show()
