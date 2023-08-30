@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 #image/hiragana_img_manager.pyをimport
 sys.path.append("image")
 
-VIDEOCAPTURE_NUM = 1 #ビデオキャプチャの番号
+VIDEOCAPTURE_NUM = 0 #ビデオキャプチャの番号
 
 #ヨー,ピッチ方向に回転する関数。3Dで使用
 def rotate_points_yaw_pitch(coords):
@@ -68,7 +68,13 @@ def rotate_points_roll(coords):
     rotated_coords = np.dot(rotation_matrix_roll, coords.T).T
     return rotated_coords
 
-
+def landmark_in_view(hand_landmarks):
+    for i in range(21):
+        if hand_landmarks.landmark[i].x < 0 or hand_landmarks.landmark[i].x > 1:
+            return False
+        if hand_landmarks.landmark[i].y < 0 or hand_landmarks.landmark[i].y > 1:
+            return False
+    return True
 
 if __name__ == "__main__":
     #ターゲットの段の入力
@@ -96,29 +102,30 @@ if __name__ == "__main__":
             hand_landmarks = results.multi_hand_landmarks[0]
             # mp_drawing.draw_landmarks(
             #     image, hand_landmarks, mp_hands.HAND_CONNECTIONS) 
-            x_coords,y_coords,z_coords = [],[],[]
-            for i in range(21):
-                x_coords.append(hand_landmarks.landmark[i].x)
-                y_coords.append(hand_landmarks.landmark[i].y)
-                z_coords.append(hand_landmarks.landmark[i].z)
-            rotated_landmarks = rotate_points_yaw_pitch(np.array([x_coords,y_coords,z_coords]).T)
-            rotated_landmarks = rotate_points_roll(rotated_landmarks)
-            #matplotlibで出力
-            fig = plt.figure()
-            #関節
-            ax = fig.add_subplot(111)
-            #骨
-            bones = [(0, 1), (1, 2), (2, 3), (3, 4), (0, 5), (5, 6), (6, 7), (7, 8), (5, 9), (9, 10), (10, 11), (11, 12), (17, 13),(9,13), (13, 14), (14, 15), (15, 16), (0, 17), (17, 18), (18, 19), (19, 20)]
-            for bone in bones:
-                ax.plot([rotated_landmarks[bone[0]][0], rotated_landmarks[bone[1]][0]], [rotated_landmarks[bone[0]][1], rotated_landmarks[bone[1]][1]], color='blue')
-            #y軸反転
-            ax.invert_yaxis()
-            ax.scatter(rotated_landmarks[:,0], rotated_landmarks[:,1])
-            ax.set_xlabel('X Label')
-            ax.set_ylabel('Y Label')
-            #plt.show()
-            plt.pause(0.05)
-            plt.close()
+            if landmark_in_view(hand_landmarks):  
+                x_coords,y_coords,z_coords = [],[],[]
+                for i in range(21):
+                    x_coords.append(hand_landmarks.landmark[i].x)
+                    y_coords.append(hand_landmarks.landmark[i].y)
+                    z_coords.append(hand_landmarks.landmark[i].z)
+                rotated_landmarks = rotate_points_yaw_pitch(np.array([x_coords,y_coords,z_coords]).T)
+                rotated_landmarks = rotate_points_roll(rotated_landmarks)
+                #matplotlibで出力
+                fig = plt.figure()
+                #関節
+                ax = fig.add_subplot(111)
+                #骨
+                bones = [(0, 1), (1, 2), (2, 3), (3, 4), (0, 5), (5, 6), (6, 7), (7, 8), (5, 9), (9, 10), (10, 11), (11, 12), (17, 13),(9,13), (13, 14), (14, 15), (15, 16), (0, 17), (17, 18), (18, 19), (19, 20)]
+                for bone in bones:
+                    ax.plot([rotated_landmarks[bone[0]][0], rotated_landmarks[bone[1]][0]], [rotated_landmarks[bone[0]][1], rotated_landmarks[bone[1]][1]], color='blue')
+                #y軸反転
+                ax.invert_yaxis()
+                ax.scatter(rotated_landmarks[:,0], rotated_landmarks[:,1])
+                ax.set_xlabel('X Label')
+                ax.set_ylabel('Y Label')
+                #plt.show()
+                plt.pause(0.1)
+                plt.close()
 
 
                

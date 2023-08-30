@@ -1,6 +1,6 @@
 
 
-import sys
+
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
@@ -9,9 +9,15 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.datasets import load_breast_cancer
 
-LANDMARK_PATH = "../shiin/hand_landmark_10000.csv"
+LANDMARK_PATH = "../1stExp/hand_landmark_shiin.csv"
+#LANDMARK_PATH = "../shiin/hand_landmark_10000.csv"
+#データセットが左右反転しているかどうか
+HAND_IS_REVERSED = False
 
 def in_rect(rect,target,i,j):
+    #a - d
+    #| e |
+    #b - c
     a = (rect[0][0], rect[0][1])
     b = (rect[1][0], rect[1][1])
     c = (rect[2][0], rect[2][1])
@@ -42,7 +48,7 @@ def in_rect(rect,target,i,j):
     vector_cross_da_de = np.cross(vector_da, vector_de)
 
     #普通であれば、全てマイナスであれば、点は四角形の内側にある
-    #端っこの四角形の場合は、その方向であればはみ出てもいいということにする
+    #端っこの四角形の場合は、端方向であればはみ出てもいいということにする
     return (i == 0 or vector_cross_ab_ae < 0) and (j+1 == 3 or vector_cross_bc_be < 0) and (i+1 == 3 or vector_cross_cd_ce < 0) and (j == 0 or vector_cross_da_de < 0)
 def calc_regression_plane(coords):
     # 最小二乗法による平面の方程式の解を求める
@@ -194,7 +200,8 @@ if __name__ == '__main__':
         z_coords = average_of_hand[2::3]
         #z = 0の平面に変換
         #xを反転    
-        x_coords = [1-x for x in x_coords] #反転している場合は必要
+        if HAND_IS_REVERSED:
+            x_coords = [1-x for x in x_coords] #反転している場合は必要
         res = rotate_points_yaw_pitch(np.array([x_coords, y_coords, z_coords]).T)
         res = rotate_points_roll(res)
         ave_x_coords, ave_y_coords, _ = res.T
@@ -208,7 +215,7 @@ if __name__ == '__main__':
     #各行を読み込んで、座標を取得
     X = [[] for i in range(11)]#11
     Y = [[] for i in range(11)]#11
-    for k in range(0,len(lines),77):
+    for k in range(0,len(lines)):
         #最初の行は飛ばす
         if lines[k][0] == 't':
             continue
@@ -222,8 +229,9 @@ if __name__ == '__main__':
         y_coords = hand_xyz[1::3]
         z_coords = hand_xyz[2::3]
 
-        #xを反転    
-        x_coords = [1-x for x in x_coords] #反転している場合は必要
+        # xを反転   
+        if HAND_IS_REVERSED: 
+            x_coords = [1-x for x in x_coords] #反転している場合は戻す
 
         #===================================================================================================
         
@@ -272,7 +280,7 @@ if __name__ == '__main__':
         for i,j in finger_bones:
             plt.plot([ave_x_coords[i], ave_x_coords[j]], [ave_y_coords[i], ave_y_coords[j]], c = 'b',linewidth=1)
 
-    cm = plt.get_cmap("Spectral")
+    cm = plt.get_cmap("rainbow")
     #plot
     for i in range(0,11):
         plt.scatter(X[i], Y[i], c = cm(i/12),s = 5)
@@ -293,7 +301,7 @@ if __name__ == '__main__':
 
     #===================================================================================================
     #kNN
-    k = 11
+    k = 3
     X_train = []
     Y_train = []
     for i in range(0,11):
@@ -325,8 +333,8 @@ if __name__ == '__main__':
     # 訓練データ、テストデータの精度を記録するための配列
     training_accuracy = []
     test_accuracy = []
-    # n_neighborsを1から11まで試す
-    neighbors_settings = range(1, 101,2)
+    # n_neighborsを1から101まで試す
+    neighbors_settings = range(1, 31,2)
     for n_neighbors in neighbors_settings:
         clf = KNeighborsClassifier(n_neighbors=n_neighbors).fit(X_train, y_train)
         # 訓練データの精度を記録
