@@ -6,7 +6,7 @@ import cv2
 import serial
 
 VIDEOCAPTURE_NUM = 0 #ビデオキャプチャの番号
-ARDUINO_PATH = "/dev/tty.usbmodem101" #Arduinoのシリアルポート
+ARDUINO_PATH = "/dev/tty.usbmodem2101" #Arduinoのシリアルポート
 
 class CharProvider:
     testString = "あかさたなはまやらわ小"

@@ -7,13 +7,13 @@ import numpy as np
 import pandas as pd
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.datasets import load_breast_cancer
 
 LANDMARK_PATH = "../1stExp/hand_landmark_shiin.csv"
 #LANDMARK_PATH = "../shiin/hand_landmark_10000.csv"
 #データセットが左右反転しているかどうか
 HAND_IS_REVERSED = False
 
+USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY = True
 def in_rect(rect,target,i,j):
     #a - d
     #| e |
@@ -176,7 +176,7 @@ def find_homography(src, dst):
 
 
 
-USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY = True
+
 
 #main
 if __name__ == '__main__':
@@ -269,9 +269,16 @@ if __name__ == '__main__':
                     new_x_coords = dst[0]/dst[2]
                     new_y_coords = dst[1]/dst[2]
                     #プロット。labelの値によって色を変える
-                    X[label].append(new_x_coords)
-                    Y[label].append(new_y_coords)
-                    
+                    #0~1の範囲に収まっているかどうか
+
+                    if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY and new_x_coords >= 0 and new_x_coords <= 1 and new_y_coords >= 0 and new_y_coords <= 1:
+                        X[label].append(new_x_coords)
+                        Y[label].append(new_y_coords)
+                    elif not USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY and new_x_coords >= -1 and new_x_coords <= 4 and new_y_coords >= -1 and new_y_coords <= 4:
+                        X[label].append(new_x_coords)
+                        Y[label].append(new_y_coords)
+                    else:
+                        print("\r",k+1,"行目の点が除外されました")
 
     #===================================================================================================
     if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
