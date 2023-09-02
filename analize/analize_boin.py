@@ -215,8 +215,10 @@ if __name__ == '__main__':
     
     
     #各行を読み込んで、座標を取得
-    X = [[] for i in range(11)]#11
-    Y = [[] for i in range(11)]#11
+    X = [[] for i in range(5)]
+    Y = [[] for i in range(5)]
+    Z = [[] for i in range(5)]
+
     for k in range(0,len(lines)):
         #最初の行は飛ばす
         if lines[k][0] == 't':
@@ -244,51 +246,74 @@ if __name__ == '__main__':
         res = rotate_points_roll(res)
         x_coords, y_coords, z_coords = res.T
 
-        cnt = 0
-        x,y = 0,0
-        for j in range(0,3):
-            for i in range(0,3):
-                # 8  7  6  5
-                # 12 11 10 9
-                # 16 15 14 13
-                # 20 19 18 17
-                index = 8+j*4-i
-                rect = [[x_coords[index], y_coords[index]], [x_coords[index+4], y_coords[index+4]], [x_coords[index+3], y_coords[index+3]],[x_coords[index-1], y_coords[index-1]]]
-                # 0 1 2 3
-                # 1
-                # 2
-                # 3
+        #4から最も近い点を5~20の点から探す
+        #4の座標
+        target = [x_coords[4], y_coords[4],z_coords[4]]
+        #5~20の座標
+        coords = np.array([x_coords[5:], y_coords[5:], z_coords[5:]]).T
+        if isTapping == 1:
+            #4から最も近い点の座標
+            nearest_index = np.argmin(np.linalg.norm(coords - target, axis=1))
+        nearest_coords = coords[nearest_index]
+        #相対座標
+        x_coords_relative = x_coords[4] - nearest_coords[0]
+        y_coords_relative = y_coords[4] - nearest_coords[1]
+        z_coords_relative = z_coords[4] - nearest_coords[2]
+        if isTapping == 1:
+            x_coords_relative_tap = x_coords_relative
+            y_coords_relative_tap = y_coords_relative
+            z_coords_relative_tap = z_coords_relative
+        else:
+            if shiin == 2:
+                X[label].append(x_coords_relative - x_coords_relative_tap)
+                Y[label].append(y_coords_relative - y_coords_relative_tap)
+                Z[label].append(z_coords_relative - z_coords_relative_tap)
+        
+        # cnt = 0
+        # x,y = 0,0
+        # for j in range(0,3):
+        #     for i in range(0,3):
+        #         # 8  7  6  5
+        #         # 12 11 10 9
+        #         # 16 15 14 13
+        #         # 20 19 18 17
+        #         index = 8+j*4-i
+        #         rect = [[x_coords[index], y_coords[index]], [x_coords[index+4], y_coords[index+4]], [x_coords[index+3], y_coords[index+3]],[x_coords[index-1], y_coords[index-1]]]
+        #         # 0 1 2 3
+        #         # 1
+        #         # 2
+        #         # 3
 
-                if in_rect(rect, [x_coords[4],y_coords[4]],i,j):
-                    dst = [[ave_x_coords[index], ave_y_coords[index]], [ave_x_coords[index+4], ave_y_coords[index+4]], [ave_x_coords[index+3], ave_y_coords[index+3]],[ave_x_coords[index-1], ave_y_coords[index-1]]]
-                    A = find_homography(rect, dst)
-                    xc = []
-                    yc = []
-                    #変換後の座標を計算
-                    src = np.array([x_coords[4], y_coords[4], 1])
-                    dst = np.dot(A, src)
-                    new_x_coords = dst[0]/dst[2]
-                    new_y_coords = dst[1]/dst[2]
+        #         if in_rect(rect, [x_coords[4],y_coords[4]],i,j):
+        #             dst = [[ave_x_coords[index], ave_y_coords[index]], [ave_x_coords[index+4], ave_y_coords[index+4]], [ave_x_coords[index+3], ave_y_coords[index+3]],[ave_x_coords[index-1], ave_y_coords[index-1]]]
+        #             A = find_homography(rect, dst)
+        #             xc = []
+        #             yc = []
+        #             #変換後の座標を計算
+        #             src = np.array([x_coords[4], y_coords[4], 1])
+        #             dst = np.dot(A, src)
+        #             new_x_coords = dst[0]/dst[2]
+        #             new_y_coords = dst[1]/dst[2]
 
-                    if isTapping == 1:
-                        new_x_coords_tap = new_x_coords
-                        new_y_coords_tap = new_y_coords
-                    else:
-                        new_x_coords_release = new_x_coords
-                        new_y_coords_release = new_y_coords
-                    #0~1の範囲に収まっているかどうか
-                        if new_x_coords_release >= 0 and new_x_coords_release <= 1 and new_y_coords_release >= 0 and new_y_coords_release <= 1:
-                            if new_x_coords_tap >= 0 and new_x_coords_tap <= 1 and new_y_coords_tap >= 0 and new_y_coords_tap <= 1:
-                                X[label].append(new_x_coords_release-new_x_coords_tap)
-                                Y[label].append(new_y_coords_release-new_y_coords_tap)
-                        else:
-                            print("\r",k+1,"行目の点が除外されました")
+        #             if isTapping == 1:
+        #                 new_x_coords_tap = new_x_coords
+        #                 new_y_coords_tap = new_y_coords
+        #             else:
+        #                 new_x_coords_release = new_x_coords
+        #                 new_y_coords_release = new_y_coords
+        #             #0~1の範囲に収まっているかどうか
+        #                 if new_x_coords_release >= 0 and new_x_coords_release <= 1 and new_y_coords_release >= 0 and new_y_coords_release <= 1:
+        #                     if new_x_coords_tap >= 0 and new_x_coords_tap <= 1 and new_y_coords_tap >= 0 and new_y_coords_tap <= 1:
+        #                         X[label].append(new_x_coords_release-new_x_coords_tap)
+        #                         Y[label].append(new_y_coords_release-new_y_coords_tap)
+        #                 else:
+        #                     print("\r",k+1,"行目の点が除外されました")
 
     #===================================================================================================
     cm = plt.get_cmap("rainbow")
     #plot
     for i in range(0,5):
-        plt.scatter(X[i], Y[i], c = cm(i/12),s = 5)
+        plt.scatter(X[i], Y[i], c = cm(i/5),s = 5)
 
     # #目盛り
     # if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
@@ -303,6 +328,17 @@ if __name__ == '__main__':
     #y軸は下向きに正
     plt.gca().invert_yaxis()
     plt.show()
+    #===================================================================================================
+    #3D
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
+    # for i in range(0,5):
+    #     ax.scatter(X[i], Y[i], Z[i], c = cm(i/5),s = 5)
+    # ax.set_xlabel('X')
+    # ax.set_ylabel('Y')
+    # ax.set_zlabel('Z')
+    # plt.show()
+
 
     #===================================================================================================
     #kNN
@@ -327,7 +363,7 @@ if __name__ == '__main__':
     # 結果を図示
     Z = Z.reshape(xx.shape)
     plt.contourf(xx, yy, Z ,20,cmap="jet",alpha=0.2)
-    for i in range(0,11):
+    for i in range(0,5):
         plt.scatter(X[i], Y[i], c = cm(i/12),s = 5)
     plt.xlim(x_min,x_max)
     plt.ylim(y_min,y_max)

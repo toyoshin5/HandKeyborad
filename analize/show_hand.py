@@ -109,9 +109,9 @@ def showPlot(x_coords, y_coords, z_coords):
         z_end = z_coords[bone[1]]
         ax.plot([x_start, x_end], [y_start, y_end], [z_start, z_end], 'b')
         
-    #指の腹の位置を推定
-    finger_surface = calc_finger_surface(np.array([x_coords, y_coords, z_coords]).T).T
-    ax.scatter(finger_surface[0], finger_surface[1], finger_surface[2], c='r')
+    # #指の腹の位置を推定
+    # finger_surface = calc_finger_surface(np.array([x_coords, y_coords, z_coords]).T).T
+    # ax.scatter(finger_surface[0], finger_surface[1], finger_surface[2], c='r')
 
     # スケールの調整
     max_range = max(max(x_coords) - min(x_coords), max(y_coords) - min(y_coords), max(z_coords) - min(z_coords))
@@ -228,7 +228,7 @@ y_coords = hand_xyz[1::3]
 z_coords = hand_xyz[2::3]
 
 #xを反転    
-x_coords = [1-x for x in x_coords] #反転している場合は必要
+#x_coords = [1-x for x in x_coords] #反転している場合は必要
 
 
 #===================================================================================================
