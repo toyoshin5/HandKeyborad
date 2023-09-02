@@ -6,38 +6,50 @@ import cv2
 import serial
 
 VIDEOCAPTURE_NUM = 0 #ビデオキャプチャの番号
-ARDUINO_PATH = "/dev/tty.usbmodem2101" #Arduinoのシリアルポート
+ARDUINO_PATH = "/dev/tty.usbmodem1101" #Arduinoのシリアルポート
 
 class CharProvider:
-    testString = "あかさたなはまやらわ小"
+    
+    testString = ["あかさたな",
+                  "えのをようき小もわせしるたそなさむひてんまり小ぬにね小はほつけやいかろお小すとちれらふへめくあ小みゆこ",
+                  "らきろねなへやゆ小るすさこ小ひりしをそたかわめけくれよちおての小にむふは小まほもとあ小えぬつせみういん"]
+    strset = 0
     index = 0
     df = pd.read_csv("../50on.csv",encoding="UTF-8", header=None)
 
     def get_char(self):
-        return self.testString[self.index]
+        return self.testString[self.strset][self.index]
     def print_char(self):
-        c = self.testString[self.index]
+        c = self.testString[self.strset][self.index]
         print(c)
     def __init__(self):
         self.index = 0
     def next(self):
         self.index += 1
-        if self.index >= len(self.testString):
+        if self.index >= len(self.testString[self.strset]):
             self.index = 0
+            self.strset += 1
+            if self.strset >= len(self.testString):
+                #終了
+                print("終了")
+                exit()
+            print(str(self.strset)+"/"+str(len(self.testString))+"セット終了")
+            print("次の文字セットへ移ります")
+            
     def prev(self):
         self.index -= 1
         if self.index < 0:
-            self.index = len(self.testString) - 1
+            self.index = 0
     def get_shiin(self):
         for i in range(len(self.df)):
             for j in range(len(self.df.iloc[i])):
-                if self.df.iloc[i][j] == self.testString[self.index]:
+                if self.df.iloc[i][j] == self.testString[self.strset][self.index]:
                     return i
         return -1
     def get_boin(self):
         for i in range(len(self.df)):
             for j in range(len(self.df.iloc[i])):
-                if self.df.iloc[i][j] == self.testString[self.index]:
+                if self.df.iloc[i][j] == self.testString[self.strset][self.index]:
                     return j
         return -1
     
@@ -53,7 +65,7 @@ def write_header_shiin(f):
     return
 
 def write_header_boin(f):   
-    s = "target,is_tapping,"
+    s = "target,is_tapping,shiin,"
     for i in range(21):
         s += ("x" + str(i) + ",y" + str(i) + "," + "z" + str(i) + ",")
     s = s[:-1]
@@ -68,8 +80,8 @@ def write_csv_shiin(f,landmark,target):
     f.write(s + "\n")
     return
 
-def write_csv_boin(f,landmark,target,is_tapping):
-    s = target + "," + str(int(is_tapping)) + ","
+def write_csv_boin(f,landmark,target,is_tapping,shiin):
+    s = target + "," + str(int(is_tapping)) + "," + shiin + ","
     for i in range(21):
         s += str(landmark[i].x) + "," + str(landmark[i].y) + "," + str(landmark[i].z) + ","
     s = s[:-1]
@@ -141,7 +153,7 @@ if __name__ == "__main__":
     if f_s.tell() == 0:
         write_header_shiin(f_s)
     if f_b.tell() == 0:
-        write_header_shiin(f_b)
+        write_header_boin(f_b)
     #文字提供
     cp = CharProvider()
     #現在手が画面内にあるかどうか
@@ -151,7 +163,6 @@ if __name__ == "__main__":
     #スペースキーを押して開始
     print ("Enterキーを押して開始")
     input()
-
 
     while cap.isOpened():
         success, image = cap.read()
@@ -167,7 +178,7 @@ if __name__ == "__main__":
         
         if results.multi_hand_landmarks and landmark_in_view(results.multi_hand_landmarks[0]):
             if not hand_in_view:
-                print("\r"+str(cp.get_char()),"を入力してください....................",end="　",flush=True)
+                print("\r"+str(cp.get_char()),"を入力してください　　　　　　　　　　",end="　",flush=True)
             hand_in_view = True
             #len(results.multi_hand_landmarks) = 写っている手の数
             hand_landmarks = results.multi_hand_landmarks[0]
@@ -186,8 +197,8 @@ if __name__ == "__main__":
                     write_csv_shiin(f_s,landmark_tap,str(target))
                     #csvファイルに書き込み(母音)
                     target = cp.get_boin()
-                    write_csv_boin(f_b,landmark_tap,str(target),False)
-                    write_csv_boin(f_b,hand_landmarks.landmark,str(target),True)
+                    write_csv_boin(f_b,landmark_tap,str(target),True,str(cp.get_shiin()))
+                    write_csv_boin(f_b,hand_landmarks.landmark,str(target),False,str(cp.get_shiin()))
                     #次の文字へ
                     print("OK")
                     cp.next()

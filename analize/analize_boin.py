@@ -14,7 +14,6 @@ LANDMARK_PATH = "../1stExp/hand_landmark_boin.csv"
 #データセットが左右反転しているかどうか
 HAND_IS_REVERSED = False
 
-USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY = True
 def in_rect(rect,target,i,j):
     #a - d
     #| e |
@@ -185,27 +184,29 @@ if __name__ == '__main__':
     file_name = LANDMARK_PATH
     ave_x_coords = []
     ave_y_coords = []
-    if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
-        df = pd.read_csv(file_name)
-        df = df.dropna()
-        #1列目はラベルなので削除
-        df = df.drop(df.columns[[0]], axis=1)
-        df = df.reset_index(drop=True)
-        df = df.astype(float)
-        #各列の平均をとる
-        average_of_hand = df.mean()
-        #平均をリストに変換
-        average_of_hand = average_of_hand.values.tolist()
-        x_coords = average_of_hand[::3]
-        y_coords = average_of_hand[1::3]    
-        z_coords = average_of_hand[2::3]
-        #z = 0の平面に変換
-        #xを反転    
-        if HAND_IS_REVERSED:
-            x_coords = [1-x for x in x_coords] #反転している場合は必要
-        res = rotate_points_yaw_pitch(np.array([x_coords, y_coords, z_coords]).T)
-        res = rotate_points_roll(res)
-        ave_x_coords, ave_y_coords, _ = res.T
+
+    #平均をとるためにデータを読み込む
+
+    df = pd.read_csv(file_name)
+    df = df.dropna()
+    #1列目と2列目と3列目はラベルなので削除
+    df = df.drop(df.columns[[0,1,2]], axis=1)
+    df = df.reset_index(drop=True)
+    df = df.astype(float)
+    #各列の平均をとる
+    average_of_hand = df.mean()
+    #平均をリストに変換
+    average_of_hand = average_of_hand.values.tolist()
+    x_coords = average_of_hand[::3]
+    y_coords = average_of_hand[1::3]    
+    z_coords = average_of_hand[2::3]
+    #z = 0の平面に変換
+    #xを反転    
+    if HAND_IS_REVERSED:
+        x_coords = [1-x for x in x_coords] #反転している場合は必要
+    res = rotate_points_yaw_pitch(np.array([x_coords, y_coords, z_coords]).T)
+    res = rotate_points_roll(res)
+    ave_x_coords, ave_y_coords, _ = res.T
 
     
     #ファイルを1行ずつ読み込む
@@ -224,7 +225,9 @@ if __name__ == '__main__':
         lines[k] = lines[k].rstrip('\n')
         lines[k] = lines[k].split(',')
         label = int(lines[k][0])
-        hand_xyz = [float(x) for x in lines[k][1:]]
+        isTapping = int(lines[k][1])
+        shiin = int(lines[k][2])
+        hand_xyz = [float(x) for x in lines[k][3:]]
 
         x_coords = hand_xyz[::3]
         y_coords = hand_xyz[1::3]
@@ -257,10 +260,7 @@ if __name__ == '__main__':
                 # 3
 
                 if in_rect(rect, [x_coords[4],y_coords[4]],i,j):
-                    if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
-                        dst = [[ave_x_coords[index], ave_y_coords[index]], [ave_x_coords[index+4], ave_y_coords[index+4]], [ave_x_coords[index+3], ave_y_coords[index+3]],[ave_x_coords[index-1], ave_y_coords[index-1]]]
-                    else:
-                        dst = [ [i, j], [i ,j+1], [i+1, j+1] ,[i+1, j]]
+                    dst = [[ave_x_coords[index], ave_y_coords[index]], [ave_x_coords[index+4], ave_y_coords[index+4]], [ave_x_coords[index+3], ave_y_coords[index+3]],[ave_x_coords[index-1], ave_y_coords[index-1]]]
                     A = find_homography(rect, dst)
                     xc = []
                     yc = []
@@ -269,39 +269,36 @@ if __name__ == '__main__':
                     dst = np.dot(A, src)
                     new_x_coords = dst[0]/dst[2]
                     new_y_coords = dst[1]/dst[2]
-                    #プロット。labelの値によって色を変える
-                    #0~1の範囲に収まっているかどうか
 
-                    if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY and new_x_coords >= 0 and new_x_coords <= 1 and new_y_coords >= 0 and new_y_coords <= 1:
-                        X[label].append(new_x_coords)
-                        Y[label].append(new_y_coords)
-                    elif not USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY and new_x_coords >= -1 and new_x_coords <= 4 and new_y_coords >= -1 and new_y_coords <= 4:
-                        X[label].append(new_x_coords)
-                        Y[label].append(new_y_coords)
+                    if isTapping == 1:
+                        new_x_coords_tap = new_x_coords
+                        new_y_coords_tap = new_y_coords
                     else:
-                        print("\r",k+1,"行目の点が除外されました")
+                        new_x_coords_release = new_x_coords
+                        new_y_coords_release = new_y_coords
+                    #0~1の範囲に収まっているかどうか
+                        if new_x_coords_release >= 0 and new_x_coords_release <= 1 and new_y_coords_release >= 0 and new_y_coords_release <= 1:
+                            if new_x_coords_tap >= 0 and new_x_coords_tap <= 1 and new_y_coords_tap >= 0 and new_y_coords_tap <= 1:
+                                X[label].append(new_x_coords_release-new_x_coords_tap)
+                                Y[label].append(new_y_coords_release-new_y_coords_tap)
+                        else:
+                            print("\r",k+1,"行目の点が除外されました")
 
     #===================================================================================================
-    if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
-        #指の骨の組み合わせ
-        finger_bones = [(7,8),(6,7),(5,6),(11,12),(10,11),(9,10),(15,16),(14,15),(13,14),(19,20),(18,19),(17,18),(5,9),(9,13),(13,17)]
-        for i,j in finger_bones:
-            plt.plot([ave_x_coords[i], ave_x_coords[j]], [ave_y_coords[i], ave_y_coords[j]], c = 'b',linewidth=1)
-
     cm = plt.get_cmap("rainbow")
     #plot
-    for i in range(0,11):
+    for i in range(0,5):
         plt.scatter(X[i], Y[i], c = cm(i/12),s = 5)
 
-    #目盛り
-    if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
-        plt.scatter(ave_x_coords[5:], ave_y_coords[5:], c = 'b',s=10)
-    else:
-        x_coords = [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3]
-        y_coords = [0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3]
-        plt.scatter(x_coords, y_coords, c = 'b')
-        plt.xlim(-1,4)
-        plt.ylim(-1,4)
+    # #目盛り
+    # if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
+    #     plt.scatter(ave_x_coords[5:], ave_y_coords[5:], c = 'b',s=10)
+    # else:
+    #     x_coords = [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3]
+    #     y_coords = [0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3]
+    #     plt.scatter(x_coords, y_coords, c = 'b')
+    #     plt.xlim(-1,4)
+    #     plt.ylim(-1,4)
 
     #y軸は下向きに正
     plt.gca().invert_yaxis()
@@ -309,10 +306,10 @@ if __name__ == '__main__':
 
     #===================================================================================================
     #kNN
-    k = 3
+    k = 7
     X_train = []
     Y_train = []
-    for i in range(0,11):
+    for i in range(0,5):
         for j in range(len(X[i])):
             X_train.append([X[i][j],Y[i][j]])
             Y_train.append(i)
@@ -320,10 +317,10 @@ if __name__ == '__main__':
     clf.fit(X_train, Y_train)
     # 結果を図示するコード
     # 0.01刻みのグリッド生成
-    x_min = min([min(x) for x in X])
-    x_max = max([max(x) for x in X])
-    y_min = min([min(y) for y in Y])
-    y_max = max([max(y) for y in Y])
+    x_min = -0.2#min([min(x) for x in X])
+    x_max = 0.2#max([max(x) for x in X])
+    y_min = -0.2#min([min(y) for y in Y])
+    y_max = 0.2#max([max(y) for y in Y])
     xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.001), np.arange(y_min, y_max, 0.001))
     # 予測
     Z = clf.predict(np.c_[xx.ravel(), yy.ravel()])
@@ -332,6 +329,8 @@ if __name__ == '__main__':
     plt.contourf(xx, yy, Z ,20,cmap="jet",alpha=0.2)
     for i in range(0,11):
         plt.scatter(X[i], Y[i], c = cm(i/12),s = 5)
+    plt.xlim(x_min,x_max)
+    plt.ylim(y_min,y_max)
     plt.gca().invert_yaxis()
     plt.show()
     #===================================================================================================

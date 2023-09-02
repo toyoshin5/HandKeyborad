@@ -12,13 +12,13 @@ void setup() {
 void loop() {
   long total = cs_4_2.capacitiveSensor(30);      // check on performance in milliseconds                   // tab character for debug windown spacing                  // print sensor output 1                            // arbitrary delay to limit data to serial port
   long vol_value = total;
-  if (vol_value > 1000) {
+  if (vol_value > 1500) {
       if (!isOn) {
           Serial.println("tap");
           isOn = true;
       }
   }
-  if(vol_value < 500){
+  if(vol_value < 1000){
     if(isOn){
       delay(100);
       Serial.println("release");
