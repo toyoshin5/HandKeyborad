@@ -9,11 +9,12 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.datasets import load_breast_cancer
 
-LANDMARK_PATH = "../1stExp/hand_landmark_boin.csv"
+LANDMARK_PATH = "../1stExp/hand_landmark_boin_all.csv"
 #LANDMARK_PATH = "../shiin/hand_landmark_10000.csv"
 #データセットが左右反転しているかどうか
 HAND_IS_REVERSED = False
-
+#離してから何フレーム後のデータを使うか
+RELEASE_FRAME = 5
 def in_rect(rect,target,i,j):
     #a - d
     #| e |
@@ -190,7 +191,7 @@ if __name__ == '__main__':
     df = pd.read_csv(file_name)
     df = df.dropna()
     #1列目と2列目と3列目はラベルなので削除
-    df = df.drop(df.columns[[0,1,2]], axis=1)
+    df = df.drop(df.columns[[0,1,2,3]], axis=1)
     df = df.reset_index(drop=True)
     df = df.astype(float)
     #各列の平均をとる
@@ -227,9 +228,10 @@ if __name__ == '__main__':
         lines[k] = lines[k].rstrip('\n')
         lines[k] = lines[k].split(',')
         label = int(lines[k][0])
-        isTapping = int(lines[k][1])
+        release_frame = int(lines[k][1])
         shiin = int(lines[k][2])
-        hand_xyz = [float(x) for x in lines[k][3:]]
+        duration = float(lines[k][3])
+        hand_xyz = [float(x) for x in lines[k][4:]]
 
         x_coords = hand_xyz[::3]
         y_coords = hand_xyz[1::3]
@@ -251,7 +253,7 @@ if __name__ == '__main__':
         target = [x_coords[4], y_coords[4],z_coords[4]]
         #5~20の座標
         coords = np.array([x_coords[5:], y_coords[5:], z_coords[5:]]).T
-        if isTapping == 1:
+        if release_frame == 0:
             #4から最も近い点の座標
             nearest_index = np.argmin(np.linalg.norm(coords - target, axis=1))
         nearest_coords = coords[nearest_index]
@@ -259,15 +261,14 @@ if __name__ == '__main__':
         x_coords_relative = x_coords[4] - nearest_coords[0]
         y_coords_relative = y_coords[4] - nearest_coords[1]
         z_coords_relative = z_coords[4] - nearest_coords[2]
-        if isTapping == 1:
+        if release_frame == 0:
             x_coords_relative_tap = x_coords_relative
             y_coords_relative_tap = y_coords_relative
             z_coords_relative_tap = z_coords_relative
-        else:
-            if shiin == 2:
-                X[label].append(x_coords_relative - x_coords_relative_tap)
-                Y[label].append(y_coords_relative - y_coords_relative_tap)
-                Z[label].append(z_coords_relative - z_coords_relative_tap)
+        elif release_frame == RELEASE_FRAME:
+            X[label].append(x_coords_relative - x_coords_relative_tap)
+            Y[label].append(y_coords_relative - y_coords_relative_tap)
+            Z[label].append(z_coords_relative - z_coords_relative_tap)
         
         # cnt = 0
         # x,y = 0,0
@@ -313,8 +314,9 @@ if __name__ == '__main__':
     cm = plt.get_cmap("rainbow")
     #plot
     for i in range(0,5):
-        plt.scatter(X[i], Y[i], c = cm(i/5),s = 5)
-
+        plt.scatter(X[i], Y[i], c = cm(i/5),s = 3)
+    plt.xlim(-0.3,0.3)
+    plt.ylim(-0.3,0.3)
     # #目盛り
     # if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
     #     plt.scatter(ave_x_coords[5:], ave_y_coords[5:], c = 'b',s=10)
@@ -342,7 +344,7 @@ if __name__ == '__main__':
 
     #===================================================================================================
     #kNN
-    k = 7
+    k = 27
     X_train = []
     Y_train = []
     for i in range(0,5):
@@ -353,18 +355,18 @@ if __name__ == '__main__':
     clf.fit(X_train, Y_train)
     # 結果を図示するコード
     # 0.01刻みのグリッド生成
-    x_min = -0.2#min([min(x) for x in X])
-    x_max = 0.2#max([max(x) for x in X])
-    y_min = -0.2#min([min(y) for y in Y])
-    y_max = 0.2#max([max(y) for y in Y])
+    x_min = -0.3#min([min(x) for x in X])
+    x_max = 0.3#max([max(x) for x in X])
+    y_min = -0.3#min([min(y) for y in Y])
+    y_max = 0.3#max([max(y) for y in Y])
     xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.001), np.arange(y_min, y_max, 0.001))
     # 予測
     Z = clf.predict(np.c_[xx.ravel(), yy.ravel()])
     # 結果を図示
     Z = Z.reshape(xx.shape)
-    plt.contourf(xx, yy, Z ,20,cmap="jet",alpha=0.2)
+    plt.contourf(xx, yy, Z ,20,cmap=(cm),alpha=0.2)
     for i in range(0,5):
-        plt.scatter(X[i], Y[i], c = cm(i/12),s = 5)
+        plt.scatter(X[i], Y[i], c = cm(i/5),s = 5)
     plt.xlim(x_min,x_max)
     plt.ylim(y_min,y_max)
     plt.gca().invert_yaxis()
@@ -372,7 +374,7 @@ if __name__ == '__main__':
     #===================================================================================================
     #kNNの交差検証
     # データを訓練データとテストデータに分割
-    X_train, X_test, y_train, y_test = train_test_split(X_train, Y_train, random_state=0)
+    X_train, X_test, y_train, y_test = train_test_split(X_train, Y_train)
     # 訓練データ、テストデータの精度を記録するための配列
     training_accuracy = []
     test_accuracy = []

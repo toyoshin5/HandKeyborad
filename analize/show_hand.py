@@ -93,6 +93,7 @@ def calc_finger_surface(coords):
 #3次元座標をプロットする関数
 def showPlot(x_coords, y_coords, z_coords):
 
+
     bones = [(0, 1), (1, 2), (2, 3), (3, 4), (0, 5), (5, 6), (6, 7), (7, 8), (5, 9), (9, 10), (10, 11), (11, 12), (17, 13),(9,13), (13, 14), (14, 15), (15, 16), (0, 17), (17, 18), (18, 19), (19, 20)]
 
     fig = plt.figure()
@@ -126,6 +127,8 @@ def showPlot(x_coords, y_coords, z_coords):
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
+
+
     plt.show()
 
 #二次元座標のプロット。先頭の要素は赤になる。y軸は下向きに正。
@@ -149,19 +152,19 @@ def showPlot2D(x_coords, y_coords):
     ax.set_ylabel('Y')
     plt.show()
 
-def showPlotProjected(x,y):
+def showPlotProjected(x,y,dst_x,dst_y):
     fig = plt.figure()
     ax = fig.add_subplot(111)
     ax.scatter(x, y,c = 'r')
     #000111222
-    x_coords = [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3]
-    y_coords = [0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3]
-    ax.scatter(x_coords, y_coords, c = 'b')
-    
+    dst_x = dst_x[5:]
+    dst_y = dst_y[5:]
+    ax.scatter(dst_x, dst_y, c = 'g')
+
      # スケールの調整
-    max_range = max(max(x_coords) - min(x_coords), max(y_coords) - min(y_coords))
-    mid_x = (max(x_coords) + min(x_coords)) * 0.5
-    mid_y = (max(y_coords) + min(y_coords)) * 0.5
+    max_range = max(max(dst_x) - min(dst_x), max(dst_y) - min(dst_y))
+    mid_x = (max(dst_x) + min(dst_x)) * 0.5
+    mid_y = (max(dst_y) + min(dst_y)) * 0.5
     ax.set_xlim(mid_x - max_range * 0.5, mid_x + max_range * 0.5)
     ax.set_ylim(mid_y - max_range * 0.5, mid_y + max_range * 0.5)
 
@@ -262,7 +265,10 @@ showPlot(x_coords, y_coords, z_coords)
 showPlot2D(x_coords[4:], y_coords[4:])
 
 #===================================================================================================
-
+dst_hand_str = "0.8694720005051488,0.6125456286468557,-0.06241354109662445,0.7516713819717142,0.43684356905920096,-0.09647392046154543,0.6381812843289673,0.35163350530403464,-0.07786856799349441,0.5449889441771603,0.3718150043428731,-0.05390180717280749,0.48356775893366916,0.41711726855396314,-0.028768114143931094,0.6175030521856252,0.32643307216302664,0.022354811123633817,0.5195923122605438,0.3104407991399291,0.04859924589689326,0.4588744558591453,0.3229839990818058,0.04933180965922528,0.40819429074797436,0.3363441011883234,0.04543231097120396,0.6221451970062815,0.42423041963979286,0.04078988409432999,0.5168174777142056,0.41436397939655967,0.07089259683755883,0.4458627887340822,0.42117340823470206,0.058198739937397444,0.38572495711912297,0.4259225581564012,0.0444607104291028,0.6374113170324149,0.5179895460837254,0.046718498255842636,0.5347247829137108,0.5127066958010575,0.06290607752078221,0.4664677298219883,0.5112997507991703,0.041919823990423065,0.40719843586017457,0.5124882530017151,0.025269857674598644,0.6613577735680873,0.6159570970963899,0.04697400475925584,0.5787647613816045,0.6156460534125838,0.05369634626504267,0.5244440539331132,0.6159224447547323,0.04369347967938833,0.47222965890275387,0.6098552226364952,0.03447723725822396"
+dst_hand_arr = dst_hand_str.split(',')
+dst_hand_x = [float(x) for x in dst_hand_arr[::3]]
+dst_hand_y = [float(x) for x in dst_hand_arr[1::3]]
 for j in range(0,3):
     for i in range(0,3):
         # 8  7  6  5
@@ -271,11 +277,7 @@ for j in range(0,3):
         # 20 19 18 17
         index = 8+j*4-i
         src = [[x_coords[index], y_coords[index]], [x_coords[index-1], y_coords[index-1]], [x_coords[index+4], y_coords[index+4]], [x_coords[index+3], y_coords[index+3]]]
-        # 0 1 2 3
-        # 1
-        # 2
-        # 3
-        dst = [ [i, j], [i+1, j], [i ,j+1], [i+1, j+1] ]
+        dst = [[dst_hand_x[index], dst_hand_y[index]], [dst_hand_x[index-1], dst_hand_y[index-1]], [dst_hand_x[index+4], dst_hand_y[index+4]], [dst_hand_x[index+3], dst_hand_y[index+3]]]
         X = find_homography(src, dst)
         xc = []
         yc = []
@@ -288,5 +290,5 @@ for j in range(0,3):
         flg = (i == 0 or i <= new_x_coords) and (i+1 == 3 or new_x_coords <= i+1) and (j == 0 or j <= new_y_coords) and (j+1 == 3 or new_y_coords <= j+1)
         print(new_x_coords, new_y_coords,flg,i,j,index)
         if flg:
-            showPlotProjected(new_x_coords, new_y_coords)
+            showPlotProjected(new_x_coords, new_y_coords,dst_hand_x,dst_hand_y)
         

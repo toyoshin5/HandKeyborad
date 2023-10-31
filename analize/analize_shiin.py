@@ -1,19 +1,62 @@
 
 
 
+from matplotlib.patches import Ellipse
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import pandas as pd
+
+from scipy.stats import chi2
+
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
 
-LANDMARK_PATH = "../1stExp/hand_landmark_shiin.csv"
+LANDMARK_PATH = "../1stExp/hand_landmark_shiin_all.csv"
 #LANDMARK_PATH = "../shiin/hand_landmark_10000.csv"
 #データセットが左右反転しているかどうか
 HAND_IS_REVERSED = False
 
 USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY = True
+
+
+class ConfidenceEllipse:
+    def __init__(self, data, p=0.95):
+        self.data = data
+        self.p = p
+
+        self.means = np.mean(data, axis=0)
+        self.cov = np.cov(data[:,0], data[:,1])
+
+        lambdas, vecs = np.linalg.eigh(self.cov)
+        order = lambdas.argsort()[::-1]
+        lambdas, vecs = lambdas[order], vecs[:,order]
+
+        c = np.sqrt(chi2.ppf(self.p, 2))
+        self.w, self.h = 2 * c * np.sqrt(lambdas)
+        self.theta = np.degrees(np.arctan(
+            ((lambdas[0] - lambdas[1])/self.cov[0,1])))
+        
+    def get_params(self):
+        return self.means, self.w, self.h, self.theta
+
+    def get_patch(self, line_color="grey", face_color="none", alpha=0):
+        el = Ellipse(xy=self.means,
+                     width=self.w, height=self.h,
+                     angle=self.theta, color=line_color, alpha=alpha)
+        el.set_facecolor(face_color)
+        return el
+    
+def remove_outliers(X,Y):
+    ellipse = ConfidenceEllipse(np.array([X,Y]).T,p = 0.98)
+    means, w, h, theta = ellipse.get_params()
+    #楕円に含まれ無い点は除外
+    for i in range(len(X)-1,-1,-1):
+        if (X[i]-means[0])**2/w**2 + (Y[i]-means[1])**2/h**2 > 1:
+            X.pop(i)
+            Y.pop(i)
+    return X,Y
+
 def in_rect(rect,target,i,j):
     #a - d
     #| e |
@@ -204,6 +247,11 @@ if __name__ == '__main__':
             x_coords = [1-x for x in x_coords] #反転している場合は必要
         res = rotate_points_yaw_pitch(np.array([x_coords, y_coords, z_coords]).T)
         res = rotate_points_roll(res)
+        #カンマ区切りでprint
+        for i in range(0,len(res)):
+            for j in range(0,len(res[i])):
+                print(res[i][j],end=",")
+        print("\n")
         ave_x_coords, ave_y_coords, _ = res.T
 
     
@@ -269,18 +317,24 @@ if __name__ == '__main__':
                     new_x_coords = dst[0]/dst[2]
                     new_y_coords = dst[1]/dst[2]
                     #プロット。labelの値によって色を変える
+                    X[label].append(new_x_coords)
+                    Y[label].append(new_y_coords)
                     #0~1の範囲に収まっているかどうか
-
-                    if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY and new_x_coords >= 0 and new_x_coords <= 1 and new_y_coords >= 0 and new_y_coords <= 1:
-                        X[label].append(new_x_coords)
-                        Y[label].append(new_y_coords)
-                    elif not USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY and new_x_coords >= -1 and new_x_coords <= 4 and new_y_coords >= -1 and new_y_coords <= 4:
-                        X[label].append(new_x_coords)
-                        Y[label].append(new_y_coords)
-                    else:
-                        print("\r",k+1,"行目の点が除外されました")
+                    # if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY and new_x_coords >= 0 and new_x_coords <= 1 and new_y_coords >= 0 and new_y_coords <= 1:
+                    #     X[label].append(new_x_coords)
+                    #     Y[label].append(new_y_coords)
+                    # elif not USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY and new_x_coords >= -1 and new_x_coords <= 4 and new_y_coords >= -1 and new_y_coords <= 4:
+                    #     X[label].append(new_x_coords)
+                    #     Y[label].append(new_y_coords)
+                    # else:
+                    #     print("\r",k+1,"行目の点が除外されました")
 
     #===================================================================================================
+    #外れ値を除去
+    for i in range(0,11):
+        X[i],Y[i] = remove_outliers(X[i],Y[i])
+    #===================================================================================================
+    #プロット
     if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
         #指の骨の組み合わせ
         finger_bones = [(7,8),(6,7),(5,6),(11,12),(10,11),(9,10),(15,16),(14,15),(13,14),(19,20),(18,19),(17,18),(5,9),(9,13),(13,17)]
@@ -290,7 +344,7 @@ if __name__ == '__main__':
     cm = plt.get_cmap("rainbow")
     #plot
     for i in range(0,11):
-        plt.scatter(X[i], Y[i], c = cm(i/12),s = 5)
+        plt.scatter(X[i], Y[i], c = cm(i/12),s = 3)
 
     #目盛り
     if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
@@ -307,8 +361,39 @@ if __name__ == '__main__':
     plt.show()
 
     #===================================================================================================
+    #楕円を描画
+    if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
+        #指の骨の組み合わせ
+        finger_bones = [(7,8),(6,7),(5,6),(11,12),(10,11),(9,10),(15,16),(14,15),(13,14),(19,20),(18,19),(17,18),(5,9),(9,13),(13,17)]
+        for i,j in finger_bones:
+            plt.plot([ave_x_coords[i], ave_x_coords[j]], [ave_y_coords[i], ave_y_coords[j]], c = 'b',linewidth=1)
+
+    #95%の信頼楕円を描画
+    for i in range(0,11):
+        ellipse = ConfidenceEllipse(np.array([X[i],Y[i]]).T)
+        means, w, h, theta = ellipse.get_params()
+        ellipse = ellipse.get_patch()
+        ellipse.set_alpha(0.5)
+        plt.gca().add_patch(ellipse)
+    #plot
+    for i in range(0,11):
+        plt.scatter(X[i], Y[i], c = cm(i/12),s = 3)
+    #目盛り
+    if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
+        plt.scatter(ave_x_coords[5:], ave_y_coords[5:], c = 'b',s=10)
+    else:
+        x_coords = [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3]
+        y_coords = [0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3]
+        plt.scatter(x_coords, y_coords, c = 'b')
+        plt.xlim(-1,4)
+        plt.ylim(-1,4)
+    #y軸は下向きに正
+    plt.gca().invert_yaxis()
+    plt.show()
+
+    #===================================================================================================
     #kNN
-    k = 5
+    k = 27
     X_train = []
     Y_train = []
     for i in range(0,11):
@@ -336,12 +421,12 @@ if __name__ == '__main__':
     #===================================================================================================
     #kNNの交差検証
     # データを訓練データとテストデータに分割
-    X_train, X_test, y_train, y_test = train_test_split(X_train, Y_train, random_state=0)
+    X_train, X_test, y_train, y_test = train_test_split(X_train, Y_train, random_state=1)
     # 訓練データ、テストデータの精度を記録するための配列
     training_accuracy = []
     test_accuracy = []
     # n_neighborsを1から101まで試す
-    neighbors_settings = range(1, 31,2)
+    neighbors_settings = range(1, 51,2)
     for n_neighbors in neighbors_settings:
         clf = KNeighborsClassifier(n_neighbors=n_neighbors).fit(X_train, y_train)
         # 訓練データの精度を記録

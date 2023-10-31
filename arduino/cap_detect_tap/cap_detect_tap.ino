@@ -2,6 +2,7 @@
 #include <CapacitiveSensor.h>
 bool isOn = false;
 CapacitiveSensor   cs_4_2 = CapacitiveSensor(4,2);
+float taptime = 0;
 //フリックの方向を正確に識別するために
 //指を離してから信号を送信するまでに遅延を導入
 void setup() {
@@ -12,18 +13,20 @@ void setup() {
 void loop() {
   long total = cs_4_2.capacitiveSensor(30);      // check on performance in milliseconds                   // tab character for debug windown spacing                  // print sensor output 1                            // arbitrary delay to limit data to serial port
   long vol_value = total;
-  if (vol_value > 1500) {
+  if (vol_value > 1200) {
       if (!isOn) {
           Serial.println("tap");
           isOn = true;
+          taptime = millis();
       }
   }
-  if(vol_value < 1000){
+  if(vol_value < 500){
     if(isOn){
+      float duration = millis() - taptime;
+      Serial.println("release," + String(duration));
       delay(100);
-      Serial.println("release");
       isOn = false;
     }
   }
-  delay( 50 );
+  delay( 10 );
 }

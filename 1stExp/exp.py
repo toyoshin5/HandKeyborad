@@ -4,52 +4,74 @@ import numpy as np
 import pandas as pd
 import cv2
 import serial
+import time
 
 VIDEOCAPTURE_NUM = 0 #ビデオキャプチャの番号
-ARDUINO_PATH = "/dev/tty.usbmodem1101" #Arduinoのシリアルポート
+ARDUINO_PATH = "/dev/tty.usbmodem2101" #Arduinoのシリアルポート
 
 class CharProvider:
-    
-    testString = ["あかさたな",
-                  "えのをようき小もわせしるたそなさむひてんまり小ぬにね小はほつけやいかろお小すとちれらふへめくあ小みゆこ",
-                  "らきろねなへやゆ小るすさこ小ひりしをそたかわめけくれよちおての小にむふは小まほもとあ小えぬつせみういん"]
+    test_string = [
+                  "あかさたなはまやらわあいうえおかきくけこ",
+                  "えのをようき小もわせしるたそなさむひてんまりぬにね小はほつけやいかろお小すとちれらふへめくあみゆこ",
+                  "らきろねなへやゆ小るすさこひりしをそたかわめけくれよちおてのにむふは小まほもとあ小えぬつせみういん",
+                  "むおえもけあみかれんよりふゆとくやてほいのさこへしつすらめうにせ小そはきちたをな小ろひぬまるねわ小",
+                  "また小なをわいよむつそれやしひちのへらけにこかみ小あお小ほんねるはりゆすときてふくさえうめろせもぬ",
+                  "えちておむへやこふとようもめつそたまほせひさらわりね小いみあにか小ゆくるのすはんぬ小しなれきろをけ",
+                  "ゆえらんねあしふてりとを小めむのまろこなおうもひるれやそたきよかち小にわ小ぬくほせすけいみはへさつ",
+                  "れてをやせひ小さくわそもりんみつむおしまにらへぬよ小とけふめたすかほちこきなねいゆうえの小はあるろ",
+                  "ねにちらさきとをのみ小めてむゆ小やあせけすくれろぬうこわそほえひりよかいんおもへふるは小またなつし",
+                  "ゆつくを小てぬまるあいへこきすねさかのにとやひほちらせなはりえけ小む小もめたうおんふろそわよしれみ",
+                  "てとへひおれもゆそちこきかわたつぬくはせ小にまんらしむすふえるけを小ろりうなのみいよ小めさあねほや",
+                  "ゆえらんねあしふてりとを小めむのまろこなおうもひるれやそたきよかち小にわ小ぬくほせすけいみはへさつ",
+                  "れてをやせひ小さくわそもりんみつむおしまにらへぬよ小とけふめたすかほちこきなねいゆうえの小はあるろ",
+                  "ねにちらさきとをのみ小めてむゆ小やあせけすくれろぬうこわそほえひりよかいんおもへふるは小またなつし",
+                  "ゆつくを小てぬまるあいへこきすねさかのにとやひほちらせなはりえけ小む小もめたうおんふろそわよしれみ",
+                  "てとへひおれもゆそちこきかわたつぬくはせ小にまんらしむすふえるけを小ろりうなのみいよ小めさあねほや",
+                  ]
     strset = 0
     index = 0
+    word_mode = True
     df = pd.read_csv("../50on.csv",encoding="UTF-8", header=None)
 
+    def __init__( self, word_mode = True ):
+        self.word_mode = word_mode
     def get_char(self):
-        return self.testString[self.strset][self.index]
+        c = self.test_string[self.strset][self.index]
+        if c == "小":
+            return "変換キー"
+        return c
     def print_char(self):
-        c = self.testString[self.strset][self.index]
+        c = self.test_string[self.strset][self.index]
         print(c)
     def __init__(self):
         self.index = 0
     def next(self):
         self.index += 1
-        if self.index >= len(self.testString[self.strset]):
+        if self.index >= len(self.test_string[self.strset]):
             self.index = 0
             self.strset += 1
-            if self.strset >= len(self.testString):
+            if self.strset >= len(self.test_string):
                 #終了
                 print("終了")
                 exit()
-            print(str(self.strset)+"/"+str(len(self.testString))+"セット終了")
+            print(str(self.strset-1)+"/"+str(len(self.test_string)-1)+"セット終了")
             print("次の文字セットへ移ります")
-            
+            time.sleep(5)
     def prev(self):
+            
         self.index -= 1
         if self.index < 0:
             self.index = 0
     def get_shiin(self):
         for i in range(len(self.df)):
             for j in range(len(self.df.iloc[i])):
-                if self.df.iloc[i][j] == self.testString[self.strset][self.index]:
+                if self.df.iloc[i][j] == self.test_string[self.strset][self.index]:
                     return i
         return -1
     def get_boin(self):
         for i in range(len(self.df)):
             for j in range(len(self.df.iloc[i])):
-                if self.df.iloc[i][j] == self.testString[self.strset][self.index]:
+                if self.df.iloc[i][j] == self.test_string[self.strset][self.index]:
                     return j
         return -1
     
@@ -65,13 +87,15 @@ def write_header_shiin(f):
     return
 
 def write_header_boin(f):   
-    s = "target,is_tapping,shiin,"
+    s = "target,release_frame,shiin,duration,"
     for i in range(21):
         s += ("x" + str(i) + ",y" + str(i) + "," + "z" + str(i) + ",")
     s = s[:-1]
     f.write(s + "\n")
     return
+
 #各landmarkのx,y座標をカンマ区切りでまとめる
+#landmark:手の座標,target:ターゲットの文字の子音
 def write_csv_shiin(f,landmark,target):
     s = target + ","
     for i in range(21):
@@ -80,8 +104,9 @@ def write_csv_shiin(f,landmark,target):
     f.write(s + "\n")
     return
 
-def write_csv_boin(f,landmark,target,is_tapping,shiin):
-    s = target + "," + str(int(is_tapping)) + "," + shiin + ","
+#landmark:手の座標,target:ターゲットの文字の母音,release_frame:離してからのフレーム数,shiin:ターゲットの文字の子音
+def write_csv_boin(f,landmark,target,release_frame,shiin,d):
+    s = target + "," + str(int(release_frame)) + "," + shiin + "," + str(d) + ","
     for i in range(21):
         s += str(landmark[i].x) + "," + str(landmark[i].y) + "," + str(landmark[i].z) + ","
     s = s[:-1]
@@ -111,7 +136,7 @@ def undo_csv_boin(f):
     end_position = f.tell()  # ファイル末尾の位置を記録
 
     # ファイル末尾から1文字ずつ戻りながら改行文字を探す
-    cnt = 3
+    cnt = 12
     for pos in range(end_position - 1, -1, -1):
         f.seek(pos)
         if f.read(1) == '\n':
@@ -139,7 +164,7 @@ if __name__ == "__main__":
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(
         min_detection_confidence=0.7,
-        min_tracking_confidence=0.3,
+        min_tracking_confidence=0.8,
     )
     mp_drawing = mp.solutions.drawing_utils
     #シリアル通信の設定
@@ -160,10 +185,11 @@ if __name__ == "__main__":
     hand_in_view = False
     #タップしているか
     is_tapping = False
+    release_cnt = 0
     #スペースキーを押して開始
-    print ("Enterキーを押して開始")
+    print("Enterキーを押して開始")
     input()
-
+    landmarks_release = []
     while cap.isOpened():
         success, image = cap.read()
         if not success:
@@ -183,33 +209,51 @@ if __name__ == "__main__":
             #len(results.multi_hand_landmarks) = 写っている手の数
             hand_landmarks = results.multi_hand_landmarks[0]
             mp_drawing.draw_landmarks(
-                image, hand_landmarks, mp_hands.HAND_CONNECTIONS)     
-            if ser.in_waiting > 0:
+                image, hand_landmarks, mp_hands.HAND_CONNECTIONS) 
+            # 親指の先端は青色で描画
+            cv2.circle(image, (int(hand_landmarks.landmark[4].x * image.shape[1]), int(hand_landmarks.landmark[4].y * image.shape[0])), 8, (255, 0, 0), -1)
+            if ser.in_waiting > 0 and release_cnt == 0:
                 row = ser.readline()
                 msg = row.decode('utf-8').rstrip()
                 if msg == "tap":
                     #離すところまで検出できてから保存処理をおこなう
                     landmark_tap = hand_landmarks.landmark
                     is_tapping = True
-                if msg == "release" and is_tapping:
-                    #csvファイルに書き込み(子音)
-                    target = cp.get_shiin()
-                    write_csv_shiin(f_s,landmark_tap,str(target))
+                if "release" in msg and is_tapping:
+                    release_cnt = 1    
+                    duration = float(msg.split(",")[1])
+            if release_cnt >= 1:
+                #離してから10フレームのデータを取得
+                landmarks_release.append(hand_landmarks.landmark)
+                release_cnt += 1
+                if ser.in_waiting > 0:
+                    _ = ser.readline()#捨て
+            if release_cnt > 10:#離してから10フレーム経過したら
+                #書き込み処理
+                #csvファイルに書き込み(子音)
+                target = cp.get_shiin()
+                write_csv_shiin(f_s,landmark_tap,str(target))
+                #csvファイルに書き込み(母音)
+                target = cp.get_boin()
+                write_csv_boin(f_b,landmark_tap,str(target),0,str(cp.get_shiin()),duration)
+                for i in range(len(landmarks_release)):
                     #csvファイルに書き込み(母音)
-                    target = cp.get_boin()
-                    write_csv_boin(f_b,landmark_tap,str(target),True,str(cp.get_shiin()))
-                    write_csv_boin(f_b,hand_landmarks.landmark,str(target),False,str(cp.get_shiin()))
-                    #次の文字へ
-                    print("OK")
-                    cp.next()
-                    print(cp.get_char(),"を入力してください　　　　　　　　　　",end="　",flush=True)
-                    is_tapping = False                      
+                    write_csv_boin(f_b,landmarks_release[i],str(target),i+1,str(cp.get_shiin()),duration)
+                #次の文字へ
+                print("OK")
+                cp.next()
+                print(cp.get_char(),"を入力してください　　　　　　　　　　",end="　",flush=True)
+                is_tapping = False
+                release_cnt = 0
+                landmarks_release = []
         else:
             if hand_in_view:
 
                 print("\r手をカメラの画角内に収めてください",end="　",flush=True)
             hand_in_view = False
             is_tapping = False
+            release_cnt = 0
+            landmarks_release = []
             if ser.in_waiting > 0:
                 _ = ser.readline()#捨て
             
