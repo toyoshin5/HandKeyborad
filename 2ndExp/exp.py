@@ -1,4 +1,5 @@
 
+
 import math
 import sys
 import mediapipe as mp
@@ -8,7 +9,7 @@ import cv2
 import serial
 import joblib
 
-VIDEOCAPTURE_NUM = 0 #ビデオキャプチャの番号
+VIDEOCAPTURE_NUM = 1 #ビデオキャプチャの番号
 ARDUINO_PATH = "/dev/tty.usbmodem2101" #Arduinoのシリアルポート
 sys.path.append("../image")
 from hiragana_img_manager import HiraganaImgManager
@@ -104,7 +105,7 @@ def landmark_in_view(hand_landmarks):
 class HiraganaPredictor:
     shiinModelPath = "../analize/shiin_knn.pkl"
     boinModelPath = "../analize/boin_knn.pkl"
-    average_of_hand = [0.7154547997049084, 0.7894387794680663, 4.4324901076576555e-07, 0.6438041814821917, 0.590992430070163, -0.03732976210313883, 0.5503414254768303, 0.4831127948182991, -0.026670779675756567, 0.4528397363997695, 0.4826012339460666, -0.01403473111400614, 0.3804775445573828, 0.5136978704119521, 0.0018797923444775588, 0.5240720077251878, 0.4566682898826596, 0.07190904932806452, 0.42965159224536525, 0.41991924678557274, 0.0881979755589811, 0.36800432406065015, 0.41859035478404893, 0.08168836943889099, 0.31644473728367667, 0.42017455287985594, 0.07162472786185732, 0.5049969821796706, 0.5534943756592103, 0.08556829934745033, 0.4015983747906824, 0.5211613516360876, 0.10456177076220292, 0.3328650974560166, 0.5115922769695308, 0.08391619958503954, 0.2751832676303712, 0.5024048645854563, 0.06351412535840792, 0.49856405258355685, 0.648419596352161, 0.088175322796482, 0.398352652929741, 0.620763680209669, 0.09339989939389212, 0.3350038488534879, 0.6035661849053908, 0.06524669698967361, 0.279284384283027, 0.5910243284656288, 0.04223526010361643, 0.5002836324186053, 0.7492306319523311, 0.08586940388653007, 0.4195580159948869, 0.7306517696366457, 0.08361263327442384, 0.36805208273798296, 0.7185082778139947, 0.06778394300966878, 0.31988291384435463, 0.7006762211350392, 0.05329800915369169]
+    average_of_hand = [0.7050574771237412, 0.7453036618739438, 4.220176619447094e-07, 0.6380715746489578, 0.5537182858377383, -0.04065226526935274, 0.5434539755573684, 0.4508825126798234, -0.03390088839189952, 0.44519127578768014, 0.4578004294824783, -0.024573237044675202, 0.37307509774826975, 0.4911852523618461, -0.012327942991832154, 0.5059959732602433, 0.4289161944964497, 0.05602689533240021, 0.4091820318843212, 0.3961846968947064, 0.0656691299043447, 0.34666060758071693, 0.3974543131953953, 0.05622074677117737, 0.2934040388063881, 0.40084353620359053, 0.04432528910008988, 0.4875388513352965, 0.5258393738025576, 0.06888396954525841, 0.3824632530048862, 0.5001935499669995, 0.08041936595391437, 0.31294162611955123, 0.49503579424764727, 0.05768020218652304, 0.254272694985392, 0.4891538744781836, 0.03621396545367038, 0.48339028725525146, 0.620041376293474, 0.07113007325131464, 0.3823291003992248, 0.598686353879096, 0.06993089157887986, 0.3179530892205949, 0.5856796870372836, 0.04052457782898027, 0.2617927516940426, 0.5772903134219355, 0.01728786701674265, 0.48810099663271433, 0.7192457505801241, 0.0684737746956558, 0.4057268740265577, 0.7043628966575376, 0.060886312493620955, 0.3526093629425231, 0.694492256150286, 0.04308659675822081, 0.30303866852684236, 0.6795648798394549, 0.027648239867118108]
     shiinClf = None
     boinClf = None
     #init
@@ -133,14 +134,16 @@ class HiraganaPredictor:
         return sam_x_coord,sam_y_coord
     def predict_shiin(self,landmarks):
         sam_x_coord,sam_y_coord = self.__get_sam_coords(landmarks)
+        if sam_x_coord > 0.5 and sam_y_coord < 0.2:
+            return sam_x_coord,sam_y_coord,100
         if sam_x_coord == 0 and sam_y_coord == 0:
-            return -1
+            return sam_x_coord,sam_y_coord,-1
         Z = self.shiinClf.predict([[sam_x_coord,sam_y_coord]]) 
-        return Z[0]
+        return sam_x_coord,sam_y_coord,Z[0]
         
     #子音の判定
     def predict_boin(self,landmarks_tap,landmarks):
-        if landmarks_tap == None:
+        if landmarks_tap is None or not landmarks_tap:
             return -1
         sam_x_coord,sam_y_coord = self.__get_sam_coords(landmarks)
         if sam_x_coord == 0 and sam_y_coord == 0:
@@ -149,8 +152,8 @@ class HiraganaPredictor:
         if sam_x_coord_tap == 0 and sam_y_coord_tap == 0:
             return -1
         #親指の位置の差分を計算
-        diff_x = sam_x_coord_tap - sam_x_coord
-        diff_y = sam_y_coord_tap - sam_y_coord
+        diff_x = sam_x_coord - sam_x_coord_tap
+        diff_y = sam_y_coord - sam_y_coord_tap
         #親指の位置の差分から、子音を計算
         Z = self.boinClf.predict([[diff_x,diff_y]])
         return Z[0]
@@ -324,6 +327,46 @@ class HiraganaPredictor:
         rotated_coords = np.dot(rotation_matrix_roll, coords.T).T
         return rotated_coords
     
+class ThumbHistory:
+    location_history = []
+    shiin_history = []
+    length = 10
+    def __init__(self):
+        self.location_history = []
+        self.shiin_history = []
+        for i in range(self.length):
+            self.location_history.append([i*1000,i*1000])
+            self.shiin_history.append(i)#適当な値を入れておく
+    
+    def frame_update(self,coord:[int,int],shiin:int):
+        self.location_history.pop(0)
+        self.shiin_history.pop(0)
+        self.location_history.append(coord)
+        self.shiin_history.append(shiin)
+    
+    def reset(self):
+        self.location_history = []
+        for i in range(self.length):
+            self.location_history.append([0,0])
+        
+    def checkStop(self,frames):
+        # #二次元データの分散を計算
+        # var = np.var(self.location_history,axis=0)
+        # var = np.sqrt(var[0]**2 + var[1]**2)
+        # #分散が小さければ、停止していると判定
+        # print(var)
+        d = np.array(self.location_history[0]) - np.array(self.location_history[1]) 
+        isStop = True
+        for i in range(min(len(self.location_history)-1,frames)):
+            #一つ前からの変化量を計算
+            diff = np.array(self.location_history[i+1]) - np.array(self.location_history[i]) 
+            #一つ前からの変化量が小さければ、停止していると判定
+            if np.sqrt(diff[0]**2 + diff[1]**2) > 0.02:
+                isStop = False
+        # 子音に変化がなければ、停止していると判c定
+        if isStop and len(set(self.shiin_history)) == 1:
+            return True
+        return False
 #入力の状態の列挙型(入力前,入力中,入力後)
 class InputState:
     BEFORE_INPUT = 0
@@ -346,11 +389,16 @@ if __name__ == "__main__":
     #現在手が画面内にあるかどうか
     hand_in_view = False
  
-    input_state = InputState.BEFORE_INPUT
-    release_cnt = 0
-    landmark_tap = None
-    pred_boin = None
-    pred_shiin = 6
+    input_state = InputState.BEFORE_INPUT #入力の状態
+    release_cnt = 0 #リリースされてからのフレーム数
+    landmark_tap = None #タップされた時の手の座標
+    pred_boin = None #推論された母音
+    pred_shiin = 6 #推論された子音
+    pred_shiin_tap = None #タップされた時の推論された子音
+    thumb_ref_x_tap = 0 #タップされた時の親指の座標
+    thumb_ref_y_tap = 0 #タップされた時の親指の座標
+    #親指の履歴
+    history = ThumbHistory()   
     #推論機
     hp = HiraganaPredictor()
     #文字系Util
@@ -390,62 +438,76 @@ if __name__ == "__main__":
             #親指の座標
             thumb_x = int(hand_landmarks.landmark[4].x * image.shape[1])
             thumb_y = int(hand_landmarks.landmark[4].y * image.shape[0])
+            #子音の判定
+            thumb_ref_x,thumb_ref_y,pred_shiin = hp.predict_shiin(hand_landmarks.landmark)
             #入力前なら
             if input_state == InputState.BEFORE_INPUT:
-                pred_shiin = hp.predict_shiin(hand_landmarks.landmark)
-                if pred_shiin != -1:
+                if pred_shiin != -1 and pred_shiin != 100:
                     #親指の位置にひらがなを描画
-                    image = im.putHiragana(hu.coord_to_char(pred_shiin,0),image,[thumb_x,thumb_y],150,alpha=0.6)
+                    image = im.putHiragana(hu.coord_to_char(pred_shiin,0),image,[thumb_x,thumb_y],150,alpha=0.4)
+                    landmark_tap = hand_landmarks.landmark
+                    pred_shiin_tap = pred_shiin
+                    thumb_ref_x_tap = thumb_ref_x
+                    thumb_ref_y_tap = thumb_ref_y
+
             #入力中なら
             if input_state == InputState.INPUTING:
-                pred_shiin = hp.predict_shiin(hand_landmarks.landmark)
-                if pred_shiin != None and pred_shiin != -1:
+                if pred_shiin_tap != None and pred_shiin_tap != -1 and pred_shiin_tap != 100:
                     #親指の位置の周りに４つのひらがなを描画
                     for i in [0,1,2,3,4]:
-                        hiragana = hu.coord_to_char(pred_shiin,i)
+                        hiragana = hu.coord_to_char(pred_shiin_tap,i)
                         if hiragana != '*':
-                            image = im.putHiragana(hiragana,image,[thumb_x,thumb_y],150,alpha=1)
+                            image = im.putHiragana(hiragana,image,[thumb_x,thumb_y],150,alpha=0.5)
             #入力後なら
             if input_state == InputState.AFTER_INPUT:
-                #pred_boin = cp.predict_boin(landmark_tap,hand_landmarks.landmark)
-                pred_boin = 1
-                if pred_shiin != None and pred_shiin != -1 and pred_boin != None and pred_boin != -1:
-                    #親指の位置の周りに４つのひらがなを描画
-                    image = im.putHiragana(hu.coord_to_char(pred_shiin,pred_boin),image,[thumb_x,thumb_y],150,alpha=1)
-
+                if pred_shiin_tap != None and pred_shiin_tap != -1 and pred_shiin_tap != 100 and pred_boin != None and pred_boin != -1:
+                    #親指の位置の周りにひらがなを描画
+                    kana = hu.coord_to_char(pred_shiin_tap,pred_boin)
+                    if kana == '*':
+                        kana = hu.coord_to_char(pred_shiin_tap,0)
+                    image = im.putHiragana(kana,image,[thumb_x,thumb_y],150,alpha=1)
             #======================
             #状態遷移
             #======================
-        
-            # if ser.in_waiting > 0 and input_state == InputState.BEFORE_INPUT:
-            #     row = ser.readline()
-            #     msg = row.decode('utf-8').rstrip()
-            #     if msg == "tap":
-            #         #タップされたら
-            #         #子音の判定
-            #         landmark_tap = hand_landmarks.landmark
-            #         shiin = cp.predict_shiin(landmark_tap)
-            #         input_state = InputState.INPUTING
-            #     if "release" in msg and input_state == InputState.INPUTING:
-            #         #リリースされたら
-            #         release_cnt = 1
-            #         input_state = InputState.AFTER_INPUT
-            #         duration = float(msg.split(",")[1])
+            if pred_shiin == 100:
+                #親指が上に出たら、入力前に戻る
+                input_state = InputState.BEFORE_INPUT
+                release_cnt = 0
+                landmarks_release = []
+                history.reset()
+            elif input_state == InputState.BEFORE_INPUT:
+                history.frame_update([thumb_ref_x,thumb_ref_y],pred_shiin)
+                if history.checkStop(3):
+                    input_state = InputState.INPUTING
+                    history.reset()
+            if input_state == InputState.INPUTING:
+                history.frame_update([thumb_ref_x,thumb_ref_y],pred_shiin)
+                isMove = False
+                #landmark_tap,hand_landmarks.landmarkの距離が0.025以上なら、移動していると判定
+                if landmark_tap is not None:
+                    if np.sqrt((thumb_ref_x_tap - thumb_ref_x)**2 + (thumb_ref_y_tap - thumb_ref_y)**2) > 0.05:
+                        isMove = True
+                if history.checkStop(20) or isMove:
+                    pred_boin = hp.predict_boin(landmark_tap,hand_landmarks.landmark)
+                    kana = hu.coord_to_char(pred_shiin_tap,pred_boin)
+                    if kana == '*':
+                        kana = hu.coord_to_char(pred_shiin_tap,0)
+                    print(kana)
+                    input_state = InputState.AFTER_INPUT
+                    history.reset()
+            
             if input_state == InputState.AFTER_INPUT:
                 #離してから15フレームの間は表示する
                 release_cnt += 1
-                if release_cnt > 10:
+                if release_cnt > 15:
                     input_state = InputState.BEFORE_INPUT
                     release_cnt = 0
                     landmarks_release = []
-                # if ser.in_waiting > 0:
-                #     _ = ser.readline()#捨て
         else:
             if hand_in_view:
-
                 print("\r手をカメラの画角内に収めてください",end="　",flush=True)
             hand_in_view = False
-            input_state = InputState.INPUTING
+            input_state = InputState.BEFORE_INPUT
             release_cnt = 0
             landmarks_release = []
             # if ser.in_waiting > 0:
