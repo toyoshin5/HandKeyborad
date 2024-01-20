@@ -3,14 +3,14 @@ import pandas as pd
 class HiraganaImgManager:
     #ひらがなと画像の辞書
     hiragana_img_dict = {}
-    df = pd.read_csv("50on.csv",encoding="UTF-8", header=None) #実行するディレクトリによって変更
+    df = pd.read_csv("../50on.csv",encoding="UTF-8", header=None) #実行するディレクトリによって変更
 
     def __init__(self):
         #ひらがなの画像を読み込んで辞書に格納
         for char in ["あ","い","う","え","お","か","き","く","け","こ","さ","し","す","せ","そ","た","ち","つ","て","と","な","に","ぬ","ね","の","は","ひ","ふ","へ","ほ","ま","み","む","め","も","や","ゆ","よ","ら","り","る","れ","ろ","わ","を","ん","ー","小"]:
-            self.hiragana_img_dict[char] = cv2.imread("image/"+char+".png", cv2.IMREAD_UNCHANGED)
+            self.hiragana_img_dict[char] = cv2.imread("../image/"+char+".png", cv2.IMREAD_UNCHANGED)#実行するディレクトリによって変更
     #画像の任意の位置にひらがなを貼り付ける
-    def putHiragana(self, char, img, pos, size):
+    def putHiragana(self, char, img, pos, size, alpha=1):
          # bgraに変換
         img = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
         # ひらがなの画像を取得
@@ -60,7 +60,7 @@ class HiraganaImgManager:
             x1 = width - size
             x2 = width
         # 貼り付け先領域のアルファチャンネルを計算
-        alpha_s = hiragana_img[:, :, 3] / 255.0
+        alpha_s = alpha * hiragana_img[:, :, 3] / 255.0
         alpha_l = 1.0 - alpha_s
         x1 = int(x1)  
         x2 = int(x2)  

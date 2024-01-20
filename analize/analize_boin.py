@@ -5,16 +5,22 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import pandas as pd
+import joblib
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.datasets import load_breast_cancer
+import japanize_matplotlib
 
 LANDMARK_PATH = "../1stExp/hand_landmark_boin_all.csv"
 #LANDMARK_PATH = "../shiin/hand_landmark_10000.csv"
 #データセットが左右反転しているかどうか
 HAND_IS_REVERSED = False
 #離してから何フレーム後のデータを使うか
-RELEASE_FRAME = 5
+RELEASE_FRAME = 4
+#子音で絞るか
+USE_SHIIN = False
+#どの子音を使うか
+SHIIN = 0
 def in_rect(rect,target,i,j):
     #a - d
     #| e |
@@ -220,6 +226,9 @@ if __name__ == '__main__':
     Y = [[] for i in range(5)]
     Z = [[] for i in range(5)]
 
+    sam_depth_array_tap = []
+    sam_depth_array_release = []
+
     for k in range(0,len(lines)):
         #最初の行は飛ばす
         if lines[k][0] == 't':
@@ -261,90 +270,53 @@ if __name__ == '__main__':
         x_coords_relative = x_coords[4] - nearest_coords[0]
         y_coords_relative = y_coords[4] - nearest_coords[1]
         z_coords_relative = z_coords[4] - nearest_coords[2]
-        if release_frame == 0:
+        if release_frame == 0 and (shiin == SHIIN or not USE_SHIIN)  :
             x_coords_relative_tap = x_coords_relative
             y_coords_relative_tap = y_coords_relative
             z_coords_relative_tap = z_coords_relative
-        elif release_frame == RELEASE_FRAME:
+        elif release_frame == RELEASE_FRAME and (shiin == SHIIN or not USE_SHIIN):
             X[label].append(x_coords_relative - x_coords_relative_tap)
             Y[label].append(y_coords_relative - y_coords_relative_tap)
             Z[label].append(z_coords_relative - z_coords_relative_tap)
-        
-        # cnt = 0
-        # x,y = 0,0
-        # for j in range(0,3):
-        #     for i in range(0,3):
-        #         # 8  7  6  5
-        #         # 12 11 10 9
-        #         # 16 15 14 13
-        #         # 20 19 18 17
-        #         index = 8+j*4-i
-        #         rect = [[x_coords[index], y_coords[index]], [x_coords[index+4], y_coords[index+4]], [x_coords[index+3], y_coords[index+3]],[x_coords[index-1], y_coords[index-1]]]
-        #         # 0 1 2 3
-        #         # 1
-        #         # 2
-        #         # 3
-
-        #         if in_rect(rect, [x_coords[4],y_coords[4]],i,j):
-        #             dst = [[ave_x_coords[index], ave_y_coords[index]], [ave_x_coords[index+4], ave_y_coords[index+4]], [ave_x_coords[index+3], ave_y_coords[index+3]],[ave_x_coords[index-1], ave_y_coords[index-1]]]
-        #             A = find_homography(rect, dst)
-        #             xc = []
-        #             yc = []
-        #             #変換後の座標を計算
-        #             src = np.array([x_coords[4], y_coords[4], 1])
-        #             dst = np.dot(A, src)
-        #             new_x_coords = dst[0]/dst[2]
-        #             new_y_coords = dst[1]/dst[2]
-
-        #             if isTapping == 1:
-        #                 new_x_coords_tap = new_x_coords
-        #                 new_y_coords_tap = new_y_coords
-        #             else:
-        #                 new_x_coords_release = new_x_coords
-        #                 new_y_coords_release = new_y_coords
-        #             #0~1の範囲に収まっているかどうか
-        #                 if new_x_coords_release >= 0 and new_x_coords_release <= 1 and new_y_coords_release >= 0 and new_y_coords_release <= 1:
-        #                     if new_x_coords_tap >= 0 and new_x_coords_tap <= 1 and new_y_coords_tap >= 0 and new_y_coords_tap <= 1:
-        #                         X[label].append(new_x_coords_release-new_x_coords_tap)
-        #                         Y[label].append(new_y_coords_release-new_y_coords_tap)
-        #                 else:
-        #                     print("\r",k+1,"行目の点が除外されました")
-
+        #親指の深さ
+        sam_depth:float = (nearest_coords[2]-z_coords[4])
+        if release_frame == 0:
+            sam_depth_array_tap.append(sam_depth)
+        else:
+            sam_depth_array_release.append(sam_depth)
+    #値を25倍する
+    # for i in range(0,5):
+    #     for j in range(0,len(X[i])):
+    #         X[i][j] *= 20/16*9
+    #         Y[i][j] *= 20
     #===================================================================================================
+    legend_str = ["あ","い","う","え","お"]
     cm = plt.get_cmap("rainbow")
     #plot
     for i in range(0,5):
-        plt.scatter(X[i], Y[i], c = cm(i/5),s = 3)
+        plt.scatter(X[i], Y[i], c = cm(i/5),s = 2)
     plt.xlim(-0.3,0.3)
     plt.ylim(-0.3,0.3)
-    # #目盛り
-    # if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
-    #     plt.scatter(ave_x_coords[5:], ave_y_coords[5:], c = 'b',s=10)
-    # else:
-    #     x_coords = [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3]
-    #     y_coords = [0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3]
-    #     plt.scatter(x_coords, y_coords, c = 'b')
-    #     plt.xlim(-1,4)
-    #     plt.ylim(-1,4)
 
     #y軸は下向きに正
     plt.gca().invert_yaxis()
+    plt.legend(legend_str)
+    plt.title("boin")
     plt.show()
-    #===================================================================================================
-    #3D
-    # fig = plt.figure()
-    # ax = fig.add_subplot(111, projection='3d')
-    # for i in range(0,5):
-    #     ax.scatter(X[i], Y[i], Z[i], c = cm(i/5),s = 5)
-    # ax.set_xlabel('X')
-    # ax.set_ylabel('Y')
-    # ax.set_zlabel('Z')
-    # plt.show()
 
+    #===================================================================================================
+    #sam_depth_array_tapとsam_depth_array_releaseの分布を表示
+
+    plt.hist(sam_depth_array_tap, bins=100, range=(-0.05, 0.2), alpha=0.5, label="接触中 (n="+str(len(sam_depth_array_tap))+")", density=True)
+    plt.hist(sam_depth_array_release, bins=100, range=(-0.05, 0.2), alpha=0.5, label="非接触中 (n="+str(len(sam_depth_array_release))+")", density=True)
+    plt.legend()
+    plt.xlabel("親指からキーまでの深さ")
+    plt.ylabel("確率密度[%]")
+    plt.show()
 
     #===================================================================================================
     #kNN
-    k = 27
+    k = 55
     X_train = []
     Y_train = []
     for i in range(0,5):
@@ -353,6 +325,7 @@ if __name__ == '__main__':
             Y_train.append(i)
     clf = KNeighborsClassifier(n_neighbors=k)
     clf.fit(X_train, Y_train)
+    joblib.dump(clf, 'boin_knn.pkl')
     # 結果を図示するコード
     # 0.01刻みのグリッド生成
     x_min = -0.3#min([min(x) for x in X])
@@ -370,7 +343,10 @@ if __name__ == '__main__':
     plt.xlim(x_min,x_max)
     plt.ylim(y_min,y_max)
     plt.gca().invert_yaxis()
+    plt.legend(legend_str)
     plt.show()
+
+
     #===================================================================================================
     #kNNの交差検証
     # データを訓練データとテストデータに分割

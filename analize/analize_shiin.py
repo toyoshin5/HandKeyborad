@@ -3,21 +3,19 @@
 
 from matplotlib.patches import Ellipse
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import pandas as pd
-
+import joblib
 from scipy.stats import chi2
-
+import japanize_matplotlib
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split
 
 LANDMARK_PATH = "../1stExp/hand_landmark_shiin_all.csv"
-#LANDMARK_PATH = "../shiin/hand_landmark_10000.csv"
 #データセットが左右反転しているかどうか
 HAND_IS_REVERSED = False
 
-USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY = True
+CALC_AVERAGE_OF_HAND_AS_HOMOGRAPHY = False
 
 
 class ConfidenceEllipse:
@@ -227,32 +225,37 @@ if __name__ == '__main__':
     file_name = LANDMARK_PATH
     ave_x_coords = []
     ave_y_coords = []
-    if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
-        df = pd.read_csv(file_name)
-        df = df.dropna()
-        #1列目はラベルなので削除
-        df = df.drop(df.columns[[0]], axis=1)
-        df = df.reset_index(drop=True)
-        df = df.astype(float)
-        #各列の平均をとる
+    df = pd.read_csv(file_name)
+    df = df.dropna()
+    #1列目はラベルなので削除
+    df = df.drop(df.columns[[0]], axis=1)
+    df = df.reset_index(drop=True)
+    df = df.astype(float)
+    #各列の平均をとる
+    if CALC_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
         average_of_hand = df.mean()
-        #平均をリストに変換
         average_of_hand = average_of_hand.values.tolist()
-        x_coords = average_of_hand[::3]
-        y_coords = average_of_hand[1::3]    
-        z_coords = average_of_hand[2::3]
-        #z = 0の平面に変換
-        #xを反転    
-        if HAND_IS_REVERSED:
-            x_coords = [1-x for x in x_coords] #反転している場合は必要
-        res = rotate_points_yaw_pitch(np.array([x_coords, y_coords, z_coords]).T)
-        res = rotate_points_roll(res)
-        #カンマ区切りでprint
-        for i in range(0,len(res)):
-            for j in range(0,len(res[i])):
-                print(res[i][j],end=",")
-        print("\n")
-        ave_x_coords, ave_y_coords, _ = res.T
+        print("average_of_hand",end=":")
+        #平均をリストに変換
+        print(average_of_hand)
+    else:
+        average_of_hand = [0.7050574771237412, 0.7453036618739438, 4.220176619447094e-07, 0.6380715746489578, 0.5537182858377383, -0.04065226526935274, 0.5434539755573684, 0.4508825126798234, -0.03390088839189952, 0.44519127578768014, 0.4578004294824783, -0.024573237044675202, 0.37307509774826975, 0.4911852523618461, -0.012327942991832154, 0.5059959732602433, 0.4289161944964497, 0.05602689533240021, 0.4091820318843212, 0.3961846968947064, 0.0656691299043447, 0.34666060758071693, 0.3974543131953953, 0.05622074677117737, 0.2934040388063881, 0.40084353620359053, 0.04432528910008988, 0.4875388513352965, 0.5258393738025576, 0.06888396954525841, 0.3824632530048862, 0.5001935499669995, 0.08041936595391437, 0.31294162611955123, 0.49503579424764727, 0.05768020218652304, 0.254272694985392, 0.4891538744781836, 0.03621396545367038, 0.48339028725525146, 0.620041376293474, 0.07113007325131464, 0.3823291003992248, 0.598686353879096, 0.06993089157887986, 0.3179530892205949, 0.5856796870372836, 0.04052457782898027, 0.2617927516940426, 0.5772903134219355, 0.01728786701674265, 0.48810099663271433, 0.7192457505801241, 0.0684737746956558, 0.4057268740265577, 0.7043628966575376, 0.060886312493620955, 0.3526093629425231, 0.694492256150286, 0.04308659675822081, 0.30303866852684236, 0.6795648798394549, 0.027648239867118108]
+    x_coords = average_of_hand[::3]
+    y_coords = average_of_hand[1::3]    
+    z_coords = average_of_hand[2::3]
+    #z = 0の平面に変換
+    #xを反転    
+    if HAND_IS_REVERSED:
+        x_coords = [1-x for x in x_coords] #反転している場合は必要
+    res = rotate_points_yaw_pitch(np.array([x_coords, y_coords, z_coords]).T)
+    res = rotate_points_roll(res)
+    # #カンマ区切りでprint
+    # for i in range(0,len(res)):
+    #     for j in range(0,len(res[i])):
+    #         print(res[i][j],end=",")
+    print("\n")
+    ave_x_coords, ave_y_coords, _ = res.T
+        
 
     
     #ファイルを1行ずつ読み込む
@@ -288,8 +291,6 @@ if __name__ == '__main__':
         res = rotate_points_roll(res)
         x_coords, y_coords, z_coords = res.T
 
-        cnt = 0
-        x,y = 0,0
         for j in range(0,3):
             for i in range(0,3):
                 # 8  7  6  5
@@ -304,10 +305,7 @@ if __name__ == '__main__':
                 # 3
 
                 if in_rect(rect, [x_coords[4],y_coords[4]],i,j):
-                    if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
-                        dst = [[ave_x_coords[index], ave_y_coords[index]], [ave_x_coords[index+4], ave_y_coords[index+4]], [ave_x_coords[index+3], ave_y_coords[index+3]],[ave_x_coords[index-1], ave_y_coords[index-1]]]
-                    else:
-                        dst = [ [i, j], [i ,j+1], [i+1, j+1] ,[i+1, j]]
+                    dst = [[ave_x_coords[index], ave_y_coords[index]], [ave_x_coords[index+4], ave_y_coords[index+4]], [ave_x_coords[index+3], ave_y_coords[index+3]],[ave_x_coords[index-1], ave_y_coords[index-1]]]
                     A = find_homography(rect, dst)
                     xc = []
                     yc = []
@@ -335,38 +333,37 @@ if __name__ == '__main__':
         X[i],Y[i] = remove_outliers(X[i],Y[i])
     #===================================================================================================
     #プロット
-    if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
-        #指の骨の組み合わせ
-        finger_bones = [(7,8),(6,7),(5,6),(11,12),(10,11),(9,10),(15,16),(14,15),(13,14),(19,20),(18,19),(17,18),(5,9),(9,13),(13,17)]
-        for i,j in finger_bones:
-            plt.plot([ave_x_coords[i], ave_x_coords[j]], [ave_y_coords[i], ave_y_coords[j]], c = 'b',linewidth=1)
+    #凡例
+    legend_str = ["あ","か","さ","た","な","は","ま","や","ら","変換","わ",]
+    #指の骨の組み合わせ
+    finger_bones = [(7,8),(6,7),(5,6),(11,12),(10,11),(9,10),(15,16),(14,15),(13,14),(19,20),(18,19),(17,18),(5,9),(9,13),(13,17)]
+    for i,j in finger_bones:
+        plt.plot([ave_x_coords[i], ave_x_coords[j]], [ave_y_coords[i], ave_y_coords[j]], c = 'b',linewidth=1)
 
     cm = plt.get_cmap("rainbow")
     #plot
     for i in range(0,11):
-        plt.scatter(X[i], Y[i], c = cm(i/12),s = 3)
-
+        marker = "o" if i < 6 else "^"
+        plt.scatter(X[i], Y[i], c = cm(i%6/6),s = 3,marker=marker, label=legend_str[i])
     #目盛り
-    if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
-        plt.scatter(ave_x_coords[5:], ave_y_coords[5:], c = 'b',s=10)
-    else:
-        x_coords = [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3]
-        y_coords = [0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3]
-        plt.scatter(x_coords, y_coords, c = 'b')
-        plt.xlim(-1,4)
-        plt.ylim(-1,4)
-
+    plt.scatter(ave_x_coords[5:], ave_y_coords[5:], c = 'b',s=10)
+    plt.xlim(0.2,0.7)
+    plt.ylim(0.1,0.75)
+    #目盛りを表示しない
+    plt.tick_params(labelbottom=False,
+                labelleft=False,
+                labelright=False,
+                labeltop=False)
     #y軸は下向きに正
     plt.gca().invert_yaxis()
+    plt.legend()
     plt.show()
-
     #===================================================================================================
     #楕円を描画
-    if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
-        #指の骨の組み合わせ
-        finger_bones = [(7,8),(6,7),(5,6),(11,12),(10,11),(9,10),(15,16),(14,15),(13,14),(19,20),(18,19),(17,18),(5,9),(9,13),(13,17)]
-        for i,j in finger_bones:
-            plt.plot([ave_x_coords[i], ave_x_coords[j]], [ave_y_coords[i], ave_y_coords[j]], c = 'b',linewidth=1)
+    #指の骨の組み合わせ
+    finger_bones = [(7,8),(6,7),(5,6),(11,12),(10,11),(9,10),(15,16),(14,15),(13,14),(19,20),(18,19),(17,18),(5,9),(9,13),(13,17)]
+    for i,j in finger_bones:
+        plt.plot([ave_x_coords[i], ave_x_coords[j]], [ave_y_coords[i], ave_y_coords[j]], c = 'b',linewidth=1)
 
     #95%の信頼楕円を描画
     for i in range(0,11):
@@ -377,18 +374,21 @@ if __name__ == '__main__':
         plt.gca().add_patch(ellipse)
     #plot
     for i in range(0,11):
-        plt.scatter(X[i], Y[i], c = cm(i/12),s = 3)
+        marker = "o" if i < 6 else "^"
+        plt.scatter(X[i], Y[i], c = cm(i%6/6),s = 3,marker=marker, label=legend_str[i])
     #目盛り
-    if USE_AVERAGE_OF_HAND_AS_HOMOGRAPHY:
-        plt.scatter(ave_x_coords[5:], ave_y_coords[5:], c = 'b',s=10)
-    else:
-        x_coords = [0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3]
-        y_coords = [0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3]
-        plt.scatter(x_coords, y_coords, c = 'b')
-        plt.xlim(-1,4)
-        plt.ylim(-1,4)
+    plt.scatter(ave_x_coords[5:], ave_y_coords[5:], c = 'b',s=10)
+    plt.xlim(0.2,0.7)
+    plt.ylim(0.1,0.75)
+    #plt.title("参加者F")
+    #目盛りを表示しない
+    plt.tick_params(labelbottom=False,
+                labelleft=False,
+                labelright=False,
+                labeltop=False)
     #y軸は下向きに正
     plt.gca().invert_yaxis()
+    plt.legend()
     plt.show()
 
     #===================================================================================================
@@ -402,6 +402,9 @@ if __name__ == '__main__':
             Y_train.append(i)
     clf = KNeighborsClassifier(n_neighbors=k)
     clf.fit(X_train, Y_train)
+    #モデルを保存
+    joblib.dump(clf, 'shiin_knn.pkl')
+
     # 結果を図示するコード
     # 0.01刻みのグリッド生成
     x_min = min([min(x) for x in X])
@@ -415,8 +418,9 @@ if __name__ == '__main__':
     Z = Z.reshape(xx.shape)
     plt.contourf(xx, yy, Z ,20,cmap="jet",alpha=0.2)
     for i in range(0,11):
-        plt.scatter(X[i], Y[i], c = cm(i/12),s = 5)
+        plt.scatter(X[i], Y[i], c = cm(i/12),s = 2,label=legend_str[i])
     plt.gca().invert_yaxis()
+    plt.legend()
     plt.show()
     #===================================================================================================
     #kNNの交差検証

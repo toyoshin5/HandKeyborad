@@ -5,7 +5,6 @@ import mediapipe as mp
 import numpy as np
 import pandas as pd
 import cv2
-from xgboost import XGBClassifier
 import pickle 
 
 #image/hiragana_img_manager.pyをimport
