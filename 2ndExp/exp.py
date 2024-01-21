@@ -1,20 +1,16 @@
-
-
-import math
 import sys
 import mediapipe as mp
 import numpy as np
 import pandas as pd
 import cv2
-import serial
 import joblib
 
-VIDEOCAPTURE_NUM = 1 #ビデオキャプチャの番号
+VIDEOCAPTURE_NUM = 0 #ビデオキャプチャの番号
 ARDUINO_PATH = "/dev/tty.usbmodem2101" #Arduinoのシリアルポート
+
+#ひらがなを描画するための自作Moduleをインポート
 sys.path.append("../image")
 from hiragana_img_manager import HiraganaImgManager
-
-
 class HiraganaUtil:
     target_dict = {0:"あ",1:"か",2:"さ",3:"た",4:"な",5:"は",6:"ま",7:"や",8:"ら",9:"小",10:"わ"}
     rev_target_dict = {"あ":0,"か":1,"さ":2,"た":3,"な":4,"は":5,"ま":6,"や":7,"ら":8,"小":9,"わ":10}
@@ -38,60 +34,6 @@ class HiraganaUtil:
                 if self.df.iloc[i][j] == chr:
                     return j
         return -1
-    
-class CharManager:
-    henkan_df = None
-    prectice_words = ["あお","かき","ねこ","わたし","ありがとう","いちご","おはよう","さようなら","さくら","すし"]
-    exp_words = ["あお","かき","ねこ","わたし","ありがとう","いちご","おはよう","さようなら","さくら","すし","あか","あかい","あかるい","あき","あく","あける","あげる","あさ","あさごはん","あさって","あし","あした","あそぶ","あたたかい","あたま","あたり"]
-    word_list = []
-    word = ""
-    index = 0
-    def __init__(self,is_practice):
-        if is_practice:
-            self.word_list = self.prectice_words
-        else:
-            self.word_list = self.exp_words
-        self.index = 0
-        self.henkan_df = pd.read_csv("textinput/dakuon_rule.csv",encoding="UTF-8", names=[0,1,2],header=None)
-    def next_word(self):
-        self.index += 1
-        self.word = ""
-        if self.index >= len(self.word_list):
-            self.index = 0
-    def delete(self):
-        if len(self.word) > 0:
-            self.word = self.word[:-1]
-    def input(self,char):
-        if char == "小" and len(self.word) > 0:
-            #dfから、prev_charのセルを探す
-            prevrow = []
-            for index, r in self.df.iterrows():
-                for col_label, cell_value in r.items():
-                    # セルの値と比較して一致する場合
-                    if cell_value == self.prev_char:
-                        #その行を配列として取得
-                        prevrow = r.values.tolist()
-                        prevrow = [x for x in prevrow if str(x) != 'nan']
-                        break
-            # if len(prevrow) == 0:
-            #     #prev_charが見つからなかった場合、変換出来ない
-            #     return
-            #prev_charの行の中で、prev_charの次の文字を探す
-            for i in range(len(prevrow)):
-                if prevrow[i] == self.prev_char:
-                    #次の文字を取得
-                    char = prevrow[(i + 1) % len(prevrow)]
-                    #一文字削除
-                    self.word = self.word[:-1]
-                    break
-        if char!="小":
-            #入力に成功している場合
-            self.word += char
-            print(self.word)
-            if self.word == self.word_list[self.index]:
-                self.next_word()
-        
-    
     
 def landmark_in_view(hand_landmarks):
     for i in range(21):
@@ -230,8 +172,7 @@ class HiraganaPredictor:
         vector_cross_cd_ce = np.cross(vector_cd, vector_ce)
         vector_cross_da_de = np.cross(vector_da, vector_de)
 
-        #普通であれば、全てマイナスであれば、点は四角形の内側にある
-        #端っこの四角形の場合は、端方向であればはみ出てもいいということにする
+        #全てマイナスであれば、点は四角形の内側にある
         return (i == 0 or vector_cross_ab_ae < 0) and (j+1 == 3 or vector_cross_bc_be < 0) and (i+1 == 3 or vector_cross_cd_ce < 0) and (j == 0 or vector_cross_da_de < 0)
 
     def __homographyTransform(self,x_coords,y_coords,ave_x_coords, ave_y_coords):
@@ -348,19 +289,13 @@ class ThumbHistory:
         self.location_history = []
         for i in range(self.length):
             self.location_history.append([0,0])
-        
+
+    #親指の静止状態を判定する関数
     def checkStop(self,frames):
-        # #二次元データの分散を計算
-        # var = np.var(self.location_history,axis=0)
-        # var = np.sqrt(var[0]**2 + var[1]**2)
-        # #分散が小さければ、停止していると判定
-        # print(var)
         d = np.array(self.location_history[0]) - np.array(self.location_history[1]) 
         isStop = True
         for i in range(min(len(self.location_history)-1,frames)):
-            #一つ前からの変化量を計算
             diff = np.array(self.location_history[i+1]) - np.array(self.location_history[i]) 
-            #一つ前からの変化量が小さければ、停止していると判定
             if np.sqrt(diff[0]**2 + diff[1]**2) > 0.02:
                 isStop = False
         # 子音に変化がなければ、停止していると判c定
@@ -433,7 +368,7 @@ if __name__ == "__main__":
 
             mp_drawing.draw_landmarks(
                 image, hand_landmarks, mp_hands.HAND_CONNECTIONS) 
-            # 親指の先端は青色で描画
+            #親指の先端は青色で描画
             cv2.circle(image, (int(hand_landmarks.landmark[4].x * image.shape[1]), int(hand_landmarks.landmark[4].y * image.shape[0])), 8, (255, 0, 0), -1)
             #親指の座標
             thumb_x = int(hand_landmarks.landmark[4].x * image.shape[1])
@@ -483,7 +418,7 @@ if __name__ == "__main__":
             if input_state == InputState.INPUTING:
                 history.frame_update([thumb_ref_x,thumb_ref_y],pred_shiin)
                 isMove = False
-                #landmark_tap,hand_landmarks.landmarkの距離が0.025以上なら、移動していると判定
+                #landmark_tap,hand_landmarks.landmarkの距離が0.05以上なら、移動していると判定
                 if landmark_tap is not None:
                     if np.sqrt((thumb_ref_x_tap - thumb_ref_x)**2 + (thumb_ref_y_tap - thumb_ref_y)**2) > 0.05:
                         isMove = True
@@ -497,7 +432,7 @@ if __name__ == "__main__":
                     history.reset()
             
             if input_state == InputState.AFTER_INPUT:
-                #離してから15フレームの間は表示する
+                #離してから15フレームの間は入力結果を表示する
                 release_cnt += 1
                 if release_cnt > 15:
                     input_state = InputState.BEFORE_INPUT
@@ -510,20 +445,9 @@ if __name__ == "__main__":
             input_state = InputState.BEFORE_INPUT
             release_cnt = 0
             landmarks_release = []
-            # if ser.in_waiting > 0:
-            #     _ = ser.readline()#捨て
             
         cv2.imshow('MediaPipe Hands', image)
-        #キー入力
-        key = cv2.waitKey(5)
-        #スペースキーで戻る
-        if key == ord(' '):
-            hp.prev()
-            print("\r1文字戻る　　　　　　　　　　　　　　　　　　　　　　　　　")
-            # undo_csv_shiin(f_s)
-            # undo_csv_boin(f_b)
-            print(hp.get_char(),"を入力してください　　　　　　　　　　",end="　",flush=True)
-
+        _ = cv2.waitKey(5)
 
     hands.close()
     cap.release()
